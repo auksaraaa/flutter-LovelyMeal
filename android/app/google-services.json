@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "320127219513",
+    "project_id": "lovelymeal1-7a2a9",
+    "storage_bucket": "lovelymeal1-7a2a9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:320127219513:android:c75e2c255a649da383dae8",
+        "android_client_info": {
+          "package_name": "com.example.lovelymeal"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDw5JuDudjHL4vgFBhXLuGLS94rraFGh3s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
