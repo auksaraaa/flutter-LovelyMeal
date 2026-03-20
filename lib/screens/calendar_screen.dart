@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import '../services/photo_service.dart';
+import '../services/auth_service.dart';
+import 'photo_day_screen.dart';
+import 'photo_history_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -11,29 +15,58 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  Map<DateTime, List<String>> _events = {};
+  Map<DateTime, int> _eventCounts = {}; // เก็บจำนวนรูปต่อวัน
+  final PhotoService _photoService = PhotoService();
+  final AuthService _authService = AuthService();
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    // Sample data - days with meals recorded
-    _loadSampleData();
+    _loadPhotosForMonth(_focusedDay);
   }
 
-  void _loadSampleData() {
-    // Add some sample days with meals
-    final now = DateTime.now();
-    for (int i = 1; i <= 30; i++) {
-      final day = DateTime(now.year, now.month, i);
-      if (i % 2 == 0 || i % 3 == 0) {
-        _events[DateTime(day.year, day.month, day.day)] = ['meal'];
+  Future<void> _loadPhotosForMonth(DateTime month) async {
+    final user = _authService.currentUser;
+    if (user == null) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final yearMonth = '${month.year}-${month.month.toString().padLeft(2, '0')}';
+      final photos = await _photoService.getPhotosByMonth(
+        uid: user.uid,
+        yearMonth: yearMonth,
+      );
+
+      if (mounted) {
+        setState(() {
+          _eventCounts.clear();
+          for (var photo in photos) {
+            final dateParts = photo.date.split('-');
+            final dateKey = DateTime(
+              int.parse(dateParts[0]),
+              int.parse(dateParts[1]),
+              int.parse(dateParts[2]),
+            );
+            _eventCounts[dateKey] = (_eventCounts[dateKey] ?? 0) + 1;
+          }
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ไม่สามารถโหลดรูปภาพ: $e')),
+        );
       }
     }
   }
 
-  List<String> _getEventsForDay(DateTime day) {
-    return _events[DateTime(day.year, day.month, day.day)] ?? [];
+  int _getEventCountForDay(DateTime day) {
+    return _eventCounts[DateTime(day.year, day.month, day.day)] ?? 0;
   }
 
   @override
@@ -42,7 +75,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       backgroundColor: const Color(0xFFFFF8E7),
       appBar: AppBar(
         title: const Text(
-          'Food diary',
+          'สมุดอาหารวันนี้',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -53,40 +86,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
         elevation: 0,
         automaticallyImplyLeading: false,
       ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                _buildCalendarCard(context, DateTime.now()),
-                const SizedBox(height: 20),
-                _buildCalendarCard(
-                  context,
-                  DateTime(DateTime.now().year, DateTime.now().month + 1),
-                ),
-                const SizedBox(height: 100), // Space for FAB
-              ],
-            ),
-          ),
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: FloatingActionButton(
-              onPressed: () {
-                // Add meal photo
-                _showAddMealDialog();
-              },
-              backgroundColor: const Color(0xFFFFB6C1),
-              child: const Icon(
-                Icons.camera_alt_outlined,
-                color: Colors.black,
-                size: 30,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  _buildCalendarCard(context, DateTime.now()),
+                  const SizedBox(height: 20), // Space at bottom
+                ],
               ),
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -121,7 +131,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             padding: const EdgeInsets.all(8.0),
             child: TableCalendar(
               firstDay: DateTime.utc(2020, 1, 1),
-              lastDay: DateTime.utc(2030, 12, 31),
+              lastDay: DateTime.now(),
               focusedDay: month,
               currentDay: DateTime.now(),
               selectedDayPredicate: (day) {
@@ -132,8 +142,47 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   _selectedDay = selectedDay;
                   _focusedDay = focusedDay;
                 });
+                
+                // Check if selected day is today
+                final today = DateTime.now();
+                final isToday = selectedDay.year == today.year &&
+                    selectedDay.month == today.month &&
+                    selectedDay.day == today.day;
+                
+                if (isToday) {
+                  // Navigate to photo day screen for today
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          PhotoDayScreen(selectedDate: selectedDay),
+                    ),
+                  ).then((_) {
+                    // Refresh photos when coming back
+                    _loadPhotosForMonth(_focusedDay);
+                  });
+                } else {
+                  // Navigate to photo history screen for past days
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PhotoHistoryScreen(
+                        photos: [],
+                        selectedDate: selectedDay,
+                        dateDisplay: _getDateDisplay(selectedDay),
+                        photosDay: [],
+                      ),
+                    ),
+                  ).then((_) {
+                    // Refresh photos when coming back
+                    _loadPhotosForMonth(_focusedDay);
+                  });
+                }
               },
-              eventLoader: _getEventsForDay,
+              eventLoader: (day) {
+                final count = _getEventCountForDay(day);
+                return List.filled(count, 'photo');
+              },
               calendarFormat: CalendarFormat.month,
               startingDayOfWeek: StartingDayOfWeek.sunday,
               headerVisible: false,
@@ -205,18 +254,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
               calendarBuilders: CalendarBuilders(
                 markerBuilder: (context, date, events) {
                   if (events.isNotEmpty) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF757575),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      margin: const EdgeInsets.all(4),
-                      padding: const EdgeInsets.all(8),
-                      child: Center(
+                    return Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF757575),
+                          shape: BoxShape.circle,
+                        ),
+                        padding: const EdgeInsets.all(4),
                         child: Text(
-                          '${date.day}',
+                          '${events.length}',
                           style: const TextStyle(
                             color: Colors.white,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -233,58 +284,52 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+
+
   String _getMonthYearText(DateTime date) {
     final months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
+      'มกราคม',
+      'กุมภาพันธ์',
+      'มีนาคม',
+      'เมษายน',
+      'พฤษภาคม',
+      'มิถุนายน',
+      'กรกฎาคม',
+      'สิงหาคม',
+      'กันยายน',
+      'ตุลาคม',
+      'พฤศจิกายน',
+      'ธันวาคม',
     ];
-    // Using Buddhist calendar year (add 543)
     return '${months[date.month - 1]} ${date.year + 543}';
   }
 
-  void _showAddMealDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Meal Photo'),
-        content: const Text('Select option to add your meal photo'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // Add camera functionality here
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Camera feature coming soon!')),
-              );
-            },
-            child: const Text('Camera'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // Add gallery functionality here
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Gallery feature coming soon!')),
-              );
-            },
-            child: const Text('Gallery'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
+  String _getDateDisplay(DateTime date) {
+    final months = [
+      'มกราคม',
+      'กุมภาพันธ์',
+      'มีนาคม',
+      'เมษายน',
+      'พฤษภาคม',
+      'มิถุนายน',
+      'กรกฎาคม',
+      'สิงหาคม',
+      'กันยายน',
+      'ตุลาคม',
+      'พฤศจิกายน',
+      'ธันวาคม',
+    ];
+    final dayOfWeek = [
+      'อาทิตย์',
+      'จันทร์',
+      'อังคาร',
+      'พุธ',
+      'พฤหัสบดี',
+      'ศุกร์',
+      'เสาร์'
+    ];
+    return '${dayOfWeek[date.weekday % 7]} ${date.day} ${months[date.month - 1]} ${date.year + 543}';
   }
+
+
 }
