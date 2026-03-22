@@ -23,7 +23,6 @@ class PhotoService {
           .ref()
           .child('users')
           .child(uid)
-          .child('photos')
           .child(date)
           .child(fileName);
 

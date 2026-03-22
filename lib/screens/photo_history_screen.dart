@@ -31,13 +31,19 @@ class _PhotoHistoryScreenState extends State<PhotoHistoryScreen> {
   @override
   void initState() {
     super.initState();
-    _photos = widget.photos;
-    _photosDay = widget.photosDay;
+    _photos = _sortPhotosByTime(widget.photos);
+    _photosDay = _sortPhotosByTime(widget.photosDay);
     
     // If photos are empty, load them from the database
     if (_photos.isEmpty && _photosDay.isEmpty) {
       _loadPhotosForDay();
     }
+  }
+
+  List<PhotoModel> _sortPhotosByTime(List<PhotoModel> photos) {
+    final sorted = List<PhotoModel>.from(photos);
+    sorted.sort((a, b) => a.createdAt.compareTo(b.createdAt)); // เรียงจากเก่าสุด
+    return sorted;
   }
 
   Future<void> _loadPhotosForDay() async {
@@ -57,8 +63,8 @@ class _PhotoHistoryScreenState extends State<PhotoHistoryScreen> {
 
       if (mounted) {
         setState(() {
-          _photosDay = photos;
-          _photos = photos;
+          _photosDay = _sortPhotosByTime(photos);
+          _photos = _sortPhotosByTime(photos);
           _isLoading = false;
         });
       }
@@ -79,29 +85,36 @@ class _PhotoHistoryScreenState extends State<PhotoHistoryScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFFFFF8E7),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+        toolbarHeight: 100,
+        leading: Padding(
+          padding: const EdgeInsets.only(top: 32.0),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () => Navigator.pop(context),
+          ),
         ),
-        title: const SizedBox.shrink(),
+        flexibleSpace: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 56.0, bottom: 16.0),
+              child: Text(
+                'History',
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : CustomScrollView(
               slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 8.0, bottom: 20.0),
-                    child: Text(
-                      'History',
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ),
                 SliverToBoxAdapter(
                   child: _photos.isEmpty
           ? SizedBox(
@@ -195,13 +208,25 @@ class _PhotoHistoryScreenState extends State<PhotoHistoryScreen> {
                               ),
                             ),
                             padding: const EdgeInsets.all(8),
-                            child: Text(
-                              photo.date,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  photo.date,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  '${photo.createdAt.hour.toString().padLeft(2, '0')}:${photo.createdAt.minute.toString().padLeft(2, '0')}',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -327,6 +352,13 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   photo.date,
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                Text(
+                                  'เวลา: ${photo.createdAt.hour.toString().padLeft(2, '0')}:${photo.createdAt.minute.toString().padLeft(2, '0')}:${photo.createdAt.second.toString().padLeft(2, '0')}',
                                   style: const TextStyle(
                                     color: Colors.white70,
                                     fontSize: 12,
