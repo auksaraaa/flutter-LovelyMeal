@@ -308,7 +308,7 @@ class ProfileScreen extends StatelessWidget {
                                                 ),
                                           ),
                                         );
-                                        if (result != null && user != null) {
+                                        if (result != null) {
                                           await databaseService
                                               .updateFoodPreferences(
                                                 uid: user.uid,
@@ -419,7 +419,7 @@ class ProfileScreen extends StatelessWidget {
                                         ),
                                       ),
                                     );
-                                    if (result != null && user != null) {
+                                    if (result != null) {
                                       await databaseService
                                           .updateFoodPreferences(
                                             uid: user.uid,

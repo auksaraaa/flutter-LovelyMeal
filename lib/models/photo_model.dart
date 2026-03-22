@@ -7,6 +7,8 @@ class PhotoModel {
   final int timestamp;
   final String storageUrl;
   final DateTime createdAt;
+  final bool? isFood; // null = not checked, true = food, false = not food
+  final double? foodConfidence; // Confidence score (0.0-1.0)
 
   PhotoModel({
     required this.id,
@@ -15,6 +17,8 @@ class PhotoModel {
     required this.timestamp,
     required this.storageUrl,
     required this.createdAt,
+    this.isFood,
+    this.foodConfidence,
   });
 
   // Convert to Map for Firestore
@@ -26,6 +30,8 @@ class PhotoModel {
       'timestamp': timestamp,
       'storageUrl': storageUrl,
       'createdAt': Timestamp.fromDate(createdAt),
+      'isFood': isFood,
+      'foodConfidence': foodConfidence,
     };
   }
 
@@ -38,6 +44,8 @@ class PhotoModel {
       timestamp: map['timestamp'] ?? 0,
       storageUrl: map['storageUrl'] ?? '',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isFood: map['isFood'] as bool?,
+      foodConfidence: map['foodConfidence'] as double?,
     );
   }
 
@@ -49,6 +57,8 @@ class PhotoModel {
     int? timestamp,
     String? storageUrl,
     DateTime? createdAt,
+    bool? isFood,
+    double? foodConfidence,
   }) {
     return PhotoModel(
       id: id ?? this.id,
@@ -57,6 +67,8 @@ class PhotoModel {
       timestamp: timestamp ?? this.timestamp,
       storageUrl: storageUrl ?? this.storageUrl,
       createdAt: createdAt ?? this.createdAt,
+      isFood: isFood ?? this.isFood,
+      foodConfidence: foodConfidence ?? this.foodConfidence,
     );
   }
 }
