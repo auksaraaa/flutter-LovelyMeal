@@ -30,8 +30,6 @@ class PhotoModel {
       'timestamp': timestamp,
       'storageUrl': storageUrl,
       'createdAt': Timestamp.fromDate(createdAt),
-      'isFood': isFood,
-      'foodConfidence': foodConfidence,
     };
   }
 
@@ -44,8 +42,6 @@ class PhotoModel {
       timestamp: map['timestamp'] ?? 0,
       storageUrl: map['storageUrl'] ?? '',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      isFood: map['isFood'] as bool?,
-      foodConfidence: map['foodConfidence'] as double?,
     );
   }
 
@@ -57,8 +53,6 @@ class PhotoModel {
     int? timestamp,
     String? storageUrl,
     DateTime? createdAt,
-    bool? isFood,
-    double? foodConfidence,
   }) {
     return PhotoModel(
       id: id ?? this.id,
@@ -67,8 +61,6 @@ class PhotoModel {
       timestamp: timestamp ?? this.timestamp,
       storageUrl: storageUrl ?? this.storageUrl,
       createdAt: createdAt ?? this.createdAt,
-      isFood: isFood ?? this.isFood,
-      foodConfidence: foodConfidence ?? this.foodConfidence,
     );
   }
 }
