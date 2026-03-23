@@ -53,8 +53,6 @@ class PhotoModel {
     int? timestamp,
     String? storageUrl,
     DateTime? createdAt,
-    bool? isFood,
-    double? foodConfidence,
   }) {
     return PhotoModel(
       id: id ?? this.id,
@@ -63,8 +61,6 @@ class PhotoModel {
       timestamp: timestamp ?? this.timestamp,
       storageUrl: storageUrl ?? this.storageUrl,
       createdAt: createdAt ?? this.createdAt,
-      isFood: isFood ?? this.isFood,
-      foodConfidence: foodConfidence ?? this.foodConfidence,
     );
   }
 }
