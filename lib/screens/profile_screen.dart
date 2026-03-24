@@ -6,6 +6,7 @@ import 'login_screen.dart';
 import 'onboarding_screen.dart';
 import 'edit_profile_screen.dart';
 import 'main_screen.dart';
+import 'favorite_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -35,6 +36,20 @@ class ProfileScreen extends StatelessWidget {
   Widget _buildLoginPrompt(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: const Color(0xFFFFB3D9),
+        elevation: 0,
+        title: const Text(
+          'โปรไฟล์',
+          style: TextStyle(
+            color: Color(0xFF333333),
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: Center(
           child: Padding(
@@ -105,7 +120,10 @@ class ProfileScreen extends StatelessWidget {
     }
 
     return StreamBuilder<UserModel?>(
-      stream: databaseService.streamUser(user.uid),
+      stream: databaseService.streamUserFlexible(
+        uid: user.uid,
+        email: user.email,
+      ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -113,19 +131,55 @@ class ProfileScreen extends StatelessWidget {
           );
         }
 
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: const Color(0xFFFCF5EE),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  'โหลดข้อมูลโปรไฟล์ไม่สำเร็จ\n${snapshot.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Color(0xFFB00020)),
+                ),
+              ),
+            ),
+          );
+        }
+
         final userData = snapshot.data;
+        final displayName = (userData?.username.isNotEmpty ?? false)
+            ? userData!.username
+            : (user.displayName ?? 'ไม่ระบุชื่อ');
+        final profilePhotoUrl = (userData?.photoUrl?.isNotEmpty ?? false)
+            ? userData!.photoUrl
+            : user.photoURL;
         final likes = userData?.likes ?? [];
         final dislikes = userData?.dislikes ?? [];
         final allergies = userData?.allergies ?? [];
 
         final categories = [
-          {'title': 'อาหารที่ชอบ', 'items': likes, 'key': 'likes'},
-          {'title': 'อาหารที่ไม่ชอบ', 'items': dislikes, 'key': 'dislikes'},
-          {'title': 'อาหารที่แพ้', 'items': allergies, 'key': 'allergies'},
+          {'title': 'วัตถุดิบที่ชอบ', 'items': likes, 'key': 'likes'},
+          {'title': 'วัตถุดิบที่ไม่ชอบ', 'items': dislikes, 'key': 'dislikes'},
+          {'title': 'วัตถุดิบที่แพ้', 'items': allergies, 'key': 'allergies'},
         ];
 
         return Scaffold(
           backgroundColor: const Color(0xFFFCF5EE),
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            backgroundColor: const Color(0xFFFFB3D9),
+            elevation: 0,
+            title: const Text(
+              'โปรไฟล์',
+              style: TextStyle(
+                color: Color(0xFF333333),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            centerTitle: true,
+          ),
           body: SafeArea(
             child: SingleChildScrollView(
               child: Padding(
@@ -146,14 +200,14 @@ class ProfileScreen extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFD1D1D1),
                                   shape: BoxShape.circle,
-                                  image: user.photoURL != null
+                                  image: profilePhotoUrl != null
                                       ? DecorationImage(
-                                          image: NetworkImage(user.photoURL!),
+                                          image: NetworkImage(profilePhotoUrl),
                                           fit: BoxFit.cover,
                                         )
                                       : null,
                                 ),
-                                child: user.photoURL == null
+                                child: profilePhotoUrl == null
                                     ? Icon(
                                         Icons.person,
                                         size: 40,
@@ -168,7 +222,7 @@ class ProfileScreen extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      user.displayName ?? 'ไม่ระบุชื่อ',
+                                      displayName,
                                       style: const TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
@@ -188,38 +242,113 @@ class ProfileScreen extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 20),
-                          // Edit Profile Button - ย้ายออกมาจาก Stack
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const EditProfileScreen(),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const EditProfileScreen(),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(
+                                    Icons.edit,
+                                    size: 18,
+                                    color: Colors.white,
                                   ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFEE6983),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 10,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                                  label: const Text(
+                                    'แก้ไขโปรไฟล์',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFEE6983),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
                                 ),
                               ),
-                              child: const Text(
-                                'แก้ไขโปรไฟล์',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () async {
+                                    final result = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => OnboardingScreen(
+                                          initialSelections: {
+                                            'likes': likes,
+                                            'dislikes': dislikes,
+                                            'allergies': allergies,
+                                          },
+                                          initialStep: 1,
+                                        ),
+                                      ),
+                                    );
+
+                                    if (result != null) {
+                                      await databaseService
+                                          .updateFoodPreferences(
+                                            uid: user.uid,
+                                            likes: List<String>.from(
+                                              result['likes'] ?? [],
+                                            ),
+                                            dislikes: List<String>.from(
+                                              result['dislikes'] ?? [],
+                                            ),
+                                            allergies: List<String>.from(
+                                              result['allergies'] ?? [],
+                                            ),
+                                          );
+
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('บันทึกข้อมูลสำเร็จ'),
+                                            backgroundColor: Colors.green,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                                  icon: const Icon(
+                                    Icons.restaurant_menu,
+                                    size: 18,
+                                    color: Colors.white,
+                                  ),
+                                  label: const Text(
+                                    'แก้ไขวัตถุดิบ',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFED985F),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
+                            ],
                           ),
                           const SizedBox(height: 15),
                           // Divider
@@ -268,97 +397,12 @@ class ProfileScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 12),
                             if (isEmpty)
-                              Column(
-                                children: [
-                                  Text(
-                                    'ยังไม่ได้เลือก',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
-                                      onPressed: () async {
-                                        // กำหนด step ตามหมวดหมู่
-                                        int targetStep = 1;
-                                        if (category['key'] == 'likes') {
-                                          targetStep = 1;
-                                        } else if (category['key'] ==
-                                            'dislikes') {
-                                          targetStep = 2;
-                                        } else if (category['key'] ==
-                                            'allergies') {
-                                          targetStep = 3;
-                                        }
-
-                                        final result = await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                OnboardingScreen(
-                                                  initialSelections: {
-                                                    'likes': likes,
-                                                    'dislikes': dislikes,
-                                                    'allergies': allergies,
-                                                  },
-                                                  initialStep: targetStep,
-                                                ),
-                                          ),
-                                        );
-                                        if (result != null && user != null) {
-                                          await databaseService
-                                              .updateFoodPreferences(
-                                                uid: user.uid,
-                                                likes: List<String>.from(
-                                                  result['likes'] ?? [],
-                                                ),
-                                                dislikes: List<String>.from(
-                                                  result['dislikes'] ?? [],
-                                                ),
-                                                allergies: List<String>.from(
-                                                  result['allergies'] ?? [],
-                                                ),
-                                              );
-                                          if (context.mounted) {
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'บันทึกข้อมูลสำเร็จ',
-                                                ),
-                                                backgroundColor: Colors.green,
-                                              ),
-                                            );
-                                          }
-                                        }
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFF4CAF50,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 8,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        '+ เพิ่มรายการ',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              Text(
+                                'ยังไม่ได้เลือก',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
                               )
                             else
                               Wrap(
@@ -385,93 +429,88 @@ class ProfileScreen extends StatelessWidget {
                                     )
                                     .toList(),
                               ),
-                            if (!isEmpty) ...[
-                              const SizedBox(height: 12),
-                              Container(
-                                height: 0.5,
-                                color: const Color(0xFFD9D9D9),
-                              ),
-                              const SizedBox(height: 12),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: ElevatedButton(
-                                  onPressed: () async {
-                                    // กำหนด step ตามหมวดหมู่
-                                    int targetStep = 1;
-                                    if (category['key'] == 'likes') {
-                                      targetStep = 1;
-                                    } else if (category['key'] == 'dislikes') {
-                                      targetStep = 2;
-                                    } else if (category['key'] == 'allergies') {
-                                      targetStep = 3;
-                                    }
-
-                                    final result = await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => OnboardingScreen(
-                                          initialSelections: {
-                                            'likes': likes,
-                                            'dislikes': dislikes,
-                                            'allergies': allergies,
-                                          },
-                                          initialStep: targetStep,
-                                        ),
-                                      ),
-                                    );
-                                    if (result != null && user != null) {
-                                      await databaseService
-                                          .updateFoodPreferences(
-                                            uid: user.uid,
-                                            likes: List<String>.from(
-                                              result['likes'] ?? [],
-                                            ),
-                                            dislikes: List<String>.from(
-                                              result['dislikes'] ?? [],
-                                            ),
-                                            allergies: List<String>.from(
-                                              result['allergies'] ?? [],
-                                            ),
-                                          );
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('บันทึกข้อมูลสำเร็จ'),
-                                            backgroundColor: Colors.green,
-                                          ),
-                                        );
-                                      }
-                                    }
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFED985F),
-                                    minimumSize: const Size(57, 30),
-                                    padding: EdgeInsets.zero,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(7),
-                                    ),
-                                    elevation: 2,
-                                    shadowColor: const Color(
-                                      0xFFED985F,
-                                    ).withOpacity(0.3),
-                                  ),
-                                  child: const Text(
-                                    'แก้ไข',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                            if (!isEmpty) ...[const SizedBox(height: 4)],
                           ],
                         ),
                       );
                     }).toList(),
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => FavoriteScreen(
+                                onBack: () => Navigator.of(context).pop(),
+                              ),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFF1F4),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.favorite,
+                                  color: Color(0xFFEE6983),
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'เมนูที่กดถูกใจ',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF333333),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'ดูรายการอาหารที่คุณบันทึกเป็นเมนูโปรด',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.chevron_right,
+                                color: Color(0xFF999999),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 30),
                     // Logout Button
                     Padding(

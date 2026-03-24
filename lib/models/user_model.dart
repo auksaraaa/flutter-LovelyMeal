@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class UserModel {
   final String uid;
   final String email;
@@ -38,17 +40,57 @@ class UserModel {
 
   // Create UserModel from Firestore Map
   factory UserModel.fromMap(Map<String, dynamic> map) {
+    final preferences = map['preferences'] is Map<String, dynamic>
+        ? map['preferences'] as Map<String, dynamic>
+        : <String, dynamic>{};
+
+    final likesRaw =
+        map['likes'] ??
+        map['liked'] ??
+        preferences['likes'] ??
+        preferences['liked'];
+    final dislikesRaw =
+        map['dislikes'] ??
+        map['disliked'] ??
+        preferences['dislikes'] ??
+        preferences['disliked'];
+    final allergiesRaw = map['allergies'] ?? preferences['allergies'];
+
     return UserModel(
-      uid: map['uid'] ?? '',
+      uid: map['uid'] ?? map['userId'] ?? '',
       email: map['email'] ?? '',
-      username: map['username'] ?? '',
-      photoUrl: map['photoUrl'],
-      likes: List<String>.from(map['likes'] ?? []),
-      dislikes: List<String>.from(map['dislikes'] ?? []),
-      allergies: List<String>.from(map['allergies'] ?? []),
-      createdAt: DateTime.parse(map['createdAt']),
-      updatedAt: DateTime.parse(map['updatedAt']),
+      username: map['username'] ?? map['displayName'] ?? map['name'] ?? '',
+      photoUrl: map['photoUrl'] ?? map['photoURL'] ?? map['avatarUrl'],
+      likes: _toStringList(likesRaw),
+      dislikes: _toStringList(dislikesRaw),
+      allergies: _toStringList(allergiesRaw),
+      createdAt: _toDateTime(map['createdAt']),
+      updatedAt: _toDateTime(map['updatedAt']),
     );
+  }
+
+  static List<String> _toStringList(dynamic value) {
+    if (value is Iterable) {
+      return value
+          .whereType<String>()
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    return const [];
+  }
+
+  static DateTime _toDateTime(dynamic value) {
+    if (value is Timestamp) {
+      return value.toDate();
+    }
+    if (value is DateTime) {
+      return value;
+    }
+    if (value is String && value.isNotEmpty) {
+      return DateTime.tryParse(value) ?? DateTime.now();
+    }
+    return DateTime.now();
   }
 
   // CopyWith method for updates

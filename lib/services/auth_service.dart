@@ -9,6 +9,9 @@ class AuthService {
   // Get current user
   User? get currentUser => _auth.currentUser;
 
+  // Get current user ID
+  static String? get currentUserId => FirebaseAuth.instance.currentUser?.uid;
+
   // Auth state changes stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
@@ -34,7 +37,7 @@ class AuthService {
         UserModel userModel = UserModel(
           uid: user.uid,
           email: email,
-          username: username, 
+          username: username,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         );

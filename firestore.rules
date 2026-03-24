@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================
+    // USERS
+    // =========================
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      match /food_preferences_history/{historyId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // =========================
+    // INGREDIENTS (read only)
+    // =========================
+    match /ingredients/{ingredientId} {
+      // Public read so guests can browse/randomize menu without login.
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // =========================
+    // FOOD (read only)
+    // =========================
+    match /food/{foodId} {
+      // Public read so guests can browse/randomize menu without login.
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // =========================
+    // USER PHOTOS
+    // =========================
+    match /user_photos/{documentId} {
+
+      // อ่าน: ดูได้เฉพาะของตัวเอง
+      allow read: if request.auth != null
+                  && resource.data.uid == request.auth.uid;
+
+      // สร้าง document ใหม่
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid;
+
+      // update/delete: เช็คว่าเป็นเจ้าของ
+      allow update, delete: if request.auth != null
+                            && resource.data.uid == request.auth.uid;
+    }
+  }
+}

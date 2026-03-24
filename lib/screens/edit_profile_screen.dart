@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart'; // เพิ่มบรรทัดนี้
 
@@ -13,6 +15,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _usernameController = TextEditingController();
   final AuthService _authService = AuthService();
   final DatabaseService _databaseService = DatabaseService(); // เพิ่มบรรทัดนี้
+  final ImagePicker _imagePicker = ImagePicker();
   bool _uploading = false;
   String? _profileImageUrl;
 
@@ -31,15 +34,78 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _pickAndUploadImage() async {
-    // TODO: Implement image picker and upload to Firebase Storage
-    // For now, just show a message
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('ฟีเจอร์อัปโหลดรูปภาพจะพร้อมใช้งานเร็วๆ นี้'),
-          duration: Duration(seconds: 2),
-        ),
+    if (_uploading) return;
+
+    final user = _authService.currentUser;
+    if (user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('กรุณาเข้าสู่ระบบก่อนอัปโหลดรูปภาพ'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1200,
       );
+
+      if (pickedFile == null) return;
+
+      setState(() => _uploading = true);
+
+      final imageBytes = await pickedFile.readAsBytes();
+      final fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_images')
+          .child(user.uid)
+          .child(fileName);
+
+      await storageRef.putData(
+        imageBytes,
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
+
+      final downloadUrl = await storageRef.getDownloadURL();
+
+      await user.updatePhotoURL(downloadUrl);
+      await user.reload();
+
+      await _databaseService.updateUserFields(user.uid, {
+        'photoUrl': downloadUrl,
+      });
+
+      if (mounted) {
+        setState(() => _profileImageUrl = downloadUrl);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('อัปโหลดรูปโปรไฟล์สำเร็จ'),
+            backgroundColor: Color(0xFF4CAF50),
+          ),
+        );
+      }
+    } catch (e) {
+      String message = 'อัปโหลดรูปภาพไม่สำเร็จ: ${e.toString()}';
+      if (e is FirebaseException && e.code == 'unauthorized') {
+        message =
+            'อัปโหลดรูปภาพไม่สำเร็จ: ไม่มีสิทธิ์เข้าถึง Firebase Storage (unauthorized)';
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _uploading = false);
+      }
     }
   }
 
