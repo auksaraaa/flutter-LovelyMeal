@@ -47,5 +47,14 @@
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>แอปต้องการเข้าถึงรูปภาพเพื่ออัปโหลดรูปโปรไฟล์ของคุณ</string>
+	<!-- Camera Permissions -->
+	<key>NSCameraUsageDescription</key>
+	<string>ต้องการเข้าถึงกล้องเพื่อถ่ายรูปอาหาร</string>
+	<!-- Photo Library Permissions -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ต้องการเข้าถึงคลังรูปเพื่อหาและเลือกรูปอาหาร</string>
+	<!-- Photo Library Add Permissions (for iOS 14+) -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>ต้องการเข้าถึงคลังรูปเพื่อบันทึกรูปอาหาร</string>
 </dict>
 </plist>
