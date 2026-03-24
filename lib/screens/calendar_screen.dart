@@ -4,6 +4,7 @@ import '../services/photo_service.dart';
 import '../services/auth_service.dart';
 import 'photo_day_screen.dart';
 import 'photo_history_screen.dart';
+import 'login_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -72,6 +73,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = _authService.currentUser;
+    
+    // Check if user is not logged in
+    if (user == null) {
+      return _buildLoginRequired(context);
+    }
+    
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8E7),
       appBar: AppBar(
@@ -330,5 +338,80 @@ class _CalendarScreenState extends State<CalendarScreen> {
       'เสาร์',
     ];
     return '${dayOfWeek[date.weekday % 7]} ${date.day} ${months[date.month - 1]} ${date.year + 543}';
+  }
+
+  Widget _buildLoginRequired(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFCF5EE),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: const Color(0xFFFFB3D9),
+        elevation: 0,
+        title: const Text(
+          'ปฏิทิน',
+          style: TextStyle(
+            color: Color(0xFF333333),
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock_outline, size: 80, color: Colors.grey[500]),
+              const SizedBox(height: 16),
+              const Text(
+                'ต้องเข้าสู่ระบบก่อนดูปฏิทิน',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF333333),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'เข้าสู่ระบบเพื่อบันทึกและดูประวัติอาหารของคุณ ได้ทุกที่ทุกเวลา',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Color(0xFF666666)),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const LoginScreen(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEE6983),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'เข้าสู่ระบบ',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

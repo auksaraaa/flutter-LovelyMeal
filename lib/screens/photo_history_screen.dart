@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/photo_model.dart';
 import '../services/photo_service.dart';
 import '../services/auth_service.dart';
@@ -89,7 +90,7 @@ class _PhotoHistoryScreenState extends State<PhotoHistoryScreen> {
         leading: Padding(
           padding: const EdgeInsets.only(top: 32.0),
           child: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            icon: const Icon(LucideIcons.chevronLeft, size: 24, color: Colors.black),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -280,7 +281,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
         backgroundColor: Colors.black,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(LucideIcons.chevronLeft, size: 24, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
