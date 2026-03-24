@@ -34,7 +34,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final yearMonth = '${month.year}-${month.month.toString().padLeft(2, '0')}';
+      final yearMonth =
+          '${month.year}-${month.month.toString().padLeft(2, '0')}';
       final photos = await _photoService.getPhotosByMonth(
         uid: user.uid,
         yearMonth: yearMonth,
@@ -58,9 +59,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ไม่สามารถโหลดรูปภาพ: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('ไม่สามารถโหลดรูปภาพ: $e')));
       }
     }
   }
@@ -74,17 +75,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8E7),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: const Color(0xFFFFB3D9),
+        elevation: 0,
         title: const Text(
-          'สมุดอาหารวันนี้',
+          'ปฏิทิน',
           style: TextStyle(
-            fontSize: 24,
+            color: Color(0xFF333333),
+            fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.black,
           ),
         ),
-        backgroundColor: const Color(0xFFFFF8E7),
-        elevation: 0,
-        automaticallyImplyLeading: false,
+        centerTitle: true,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -142,13 +144,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   _selectedDay = selectedDay;
                   _focusedDay = focusedDay;
                 });
-                
+
                 // Check if selected day is today
                 final today = DateTime.now();
-                final isToday = selectedDay.year == today.year &&
+                final isToday =
+                    selectedDay.year == today.year &&
                     selectedDay.month == today.month &&
                     selectedDay.day == today.day;
-                
+
                 if (isToday) {
                   // Navigate to photo day screen for today
                   Navigator.push(
@@ -284,8 +287,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-
-
   String _getMonthYearText(DateTime date) {
     final months = [
       'มกราคม',
@@ -326,10 +327,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       'พุธ',
       'พฤหัสบดี',
       'ศุกร์',
-      'เสาร์'
+      'เสาร์',
     ];
     return '${dayOfWeek[date.weekday % 7]} ${date.day} ${months[date.month - 1]} ${date.year + 543}';
   }
-
-
 }

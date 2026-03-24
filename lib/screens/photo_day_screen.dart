@@ -382,15 +382,7 @@ class _PhotoDayScreenState extends State<PhotoDayScreen> {
                       fontSize: 14,
                     ),
                   ),
-                  if (isFood) ...[
-                    Text(
-                      'ความมั่นใจ: ${result.confidenceText}',
-                      style: TextStyle(
-                        color: textColor.withOpacity(0.7),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ] else ...[
+                  if (!isFood)
                     Text(
                       'ไม่พบอาหารในภาพ ลองเปลี่ยนมุม\nหรือถ่ายให้ใกล้ขึ้น',
                       style: TextStyle(
@@ -398,20 +390,10 @@ class _PhotoDayScreenState extends State<PhotoDayScreen> {
                         fontSize: 12,
                       ),
                     ),
-                  ],
                 ],
               ),
             ],
           ),
-          if (isFood)
-            Text(
-              '${(result.foodScore * 100).toStringAsFixed(0)}%',
-              style: TextStyle(
-                color: textColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
         ],
       ),
     );

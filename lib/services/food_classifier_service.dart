@@ -18,31 +18,16 @@ class FoodClassifierService {
     if (_isInitialized) return;
 
     try {
-      final gpuDelegateV2 = GpuDelegateV2(
-        options: GpuDelegateOptionsV2(
-          isPrecisionLossAllowed: false,
-        ),
-      );
-
+      // Load model with CPU delegate (most compatible for real devices)
       _interpreter = await Interpreter.fromAsset(
         'assets/models/model.tflite',
-        options: InterpreterOptions()..addDelegate(gpuDelegateV2),
+        options: InterpreterOptions(),
       );
-
+      print('Model loaded successfully on CPU');
       _isInitialized = true;
     } catch (e) {
-      print('Error loading model: $e');
-      // Fallback to CPU if GPU fails
-      try {
-        _interpreter = await Interpreter.fromAsset(
-          'assets/models/model.tflite',
-          options: InterpreterOptions(),
-        );
-        _isInitialized = true;
-      } catch (e) {
-        print('Error loading model on CPU: $e');
-        rethrow;
-      }
+      print('Error loading model on CPU: $e');
+      rethrow;
     }
   }
 
@@ -53,6 +38,11 @@ class FoodClassifierService {
     }
 
     try {
+      // Check if file exists
+      if (!imageFile.existsSync()) {
+        throw 'ไฟล์รูปภาพไม่พบ';
+      }
+
       // Read image file
       final imageBytes = imageFile.readAsBytesSync();
       final image = img.decodeImage(imageBytes);
@@ -63,6 +53,7 @@ class FoodClassifierService {
 
       return _classifyDecoded(image);
     } catch (e) {
+      print('Classification error: $e');
       throw 'เกิดข้อผิดพลาดในการประมวลผลรูปภาพ: $e';
     }
   }
@@ -70,6 +61,8 @@ class FoodClassifierService {
   // Classify decoded image
   Future<ClassificationResult> _classifyDecoded(img.Image image) async {
     try {
+      print('Original image size: ${image.width}x${image.height}');
+
       // Resize to 224x224
       final resized = img.copyResize(
         image,
@@ -77,22 +70,29 @@ class FoodClassifierService {
         height: 224,
         interpolation: img.Interpolation.linear,
       );
+      print('Resized to: ${resized.width}x${resized.height}');
 
       // Convert to float32 array and normalize
       final input = _preprocessImage(resized);
+      print('Input tensor created');
 
       // Run inference - output shape should be [1, 2]
       final output = [List<double>.filled(2, 0.0)];
       _interpreter.run(input, output);
+      print('Inference completed');
 
       // Parse results
       final foodScore = output[0][0].toDouble(); // Raw score for food
       final nonFoodScore = output[0][1].toDouble(); // Raw score for non-food
 
+      print('Raw scores - Food: $foodScore, Non-Food: $nonFoodScore');
+
       // Apply softmax to normalize scores to [0, 1] range
       final normalizedScores = _softmax([foodScore, nonFoodScore]);
       final normalizedFoodScore = normalizedScores[0];
       final normalizedNonFoodScore = normalizedScores[1];
+
+      print('Normalized scores - Food: $normalizedFoodScore, Non-Food: $normalizedNonFoodScore');
 
       // Determine if image is food
       final isFood = normalizedFoodScore > normalizedNonFoodScore;
@@ -105,6 +105,7 @@ class FoodClassifierService {
         nonFoodScore: normalizedNonFoodScore,
       );
     } catch (e) {
+      print('Classification error: $e');
       throw 'เกิดข้อผิดพลาดในการจำแนกรูปภาพ: $e';
     }
   }

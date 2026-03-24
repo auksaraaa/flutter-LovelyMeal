@@ -219,7 +219,7 @@ class _ChatScreenState extends State<ChatScreen> {
         backgroundColor: const Color(0xFFFFB3D9),
         elevation: 0,
         title: const Text(
-          'Chatbot AI',
+          'Chatbot',
           style: TextStyle(
             color: Color(0xFF333333),
             fontSize: 20,
@@ -294,7 +294,7 @@ class _ChatScreenState extends State<ChatScreen> {
         backgroundColor: const Color(0xFFFFB3D9),
         elevation: 0,
         title: const Text(
-          'Chatbot AI',
+          'Chatbot',
           style: TextStyle(
             color: Color(0xFF333333),
             fontSize: 20,
@@ -479,7 +479,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             ),
                             SizedBox(width: 4),
                             Text(
-                              'LovelyMeal AI',
+                              'LovelyMeal',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Color(0xFFB94C72),
@@ -570,7 +570,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: Text(
                   food.name,
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: Colors.black,
                   ),
@@ -578,7 +578,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -594,7 +594,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               child: const Text(
                 'ดูเพิ่มเติม !',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
             ),
           ),
