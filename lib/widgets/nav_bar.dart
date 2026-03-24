@@ -42,13 +42,13 @@ class NavBar extends StatelessWidget {
               ),
               _NavItem(
                 icon: Icons.chat_bubble_outline,
-                label: 'Chat',
+                label: 'แชท',
                 isActive: currentIndex == 2,
                 onTap: () => onTap(2),
               ),
               _NavItem(
                 icon: Icons.person,
-                label: 'Profile',
+                label: 'โปรไฟล์',
                 isActive: currentIndex == 3,
                 onTap: () => onTap(3),
               ),

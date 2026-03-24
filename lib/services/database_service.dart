@@ -2,14 +2,25 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 
 class DatabaseService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String _usersCollection = 'users';
+  FirebaseFirestore get firestore => FirebaseFirestore.instance;
+  String get usersCollectionName => 'users';
+  String get foodCollectionName => 'food';
+  String get favoritesCollectionName => 'favorites';
+
+  CollectionReference<Map<String, dynamic>> get usersCollection =>
+      firestore.collection(usersCollectionName);
+
+  CollectionReference<Map<String, dynamic>> get foodCollection =>
+      firestore.collection(foodCollectionName);
+
+  CollectionReference<Map<String, dynamic>> get favoritesCollection =>
+      firestore.collection(favoritesCollectionName);
 
   // Create user in Firestore
   Future<void> createUser(UserModel user) async {
     try {
-      await _firestore
-          .collection(_usersCollection)
+      await firestore
+          .collection(usersCollectionName)
           .doc(user.uid)
           .set(user.toMap());
     } catch (e) {
@@ -20,8 +31,8 @@ class DatabaseService {
   // Get user from Firestore
   Future<UserModel?> getUser(String uid) async {
     try {
-      DocumentSnapshot doc = await _firestore
-          .collection(_usersCollection)
+      DocumentSnapshot doc = await firestore
+          .collection(usersCollectionName)
           .doc(uid)
           .get();
 
@@ -37,8 +48,8 @@ class DatabaseService {
   // Update user in Firestore
   Future<void> updateUser(UserModel user) async {
     try {
-      await _firestore
-          .collection(_usersCollection)
+      await firestore
+          .collection(usersCollectionName)
           .doc(user.uid)
           .update(user.copyWith(updatedAt: DateTime.now()).toMap());
     } catch (e) {
@@ -50,7 +61,7 @@ class DatabaseService {
   Future<void> updateUserFields(String uid, Map<String, dynamic> fields) async {
     try {
       fields['updatedAt'] = DateTime.now().toIso8601String();
-      await _firestore.collection(_usersCollection).doc(uid).update(fields);
+      await usersCollection.doc(uid).update(fields);
     } catch (e) {
       throw 'ไม่สามารถอัปเดตข้อมูลผู้ใช้: $e';
     }
@@ -59,7 +70,7 @@ class DatabaseService {
   // Delete user from Firestore
   Future<void> deleteUser(String uid) async {
     try {
-      await _firestore.collection(_usersCollection).doc(uid).delete();
+      await usersCollection.doc(uid).delete();
     } catch (e) {
       throw 'ไม่สามารถลบข้อมูลผู้ใช้: $e';
     }
@@ -67,12 +78,57 @@ class DatabaseService {
 
   // Stream user data
   Stream<UserModel?> streamUser(String uid) {
-    return _firestore.collection(_usersCollection).doc(uid).snapshots().map((
-      doc,
-    ) {
+    return usersCollection.doc(uid).snapshots().asyncMap((doc) async {
       if (doc.exists) {
         return UserModel.fromMap(doc.data() as Map<String, dynamic>);
       }
+
+      final fallback = await usersCollection
+          .where('uid', isEqualTo: uid)
+          .limit(1)
+          .get();
+      if (fallback.docs.isNotEmpty) {
+        return UserModel.fromMap(fallback.docs.first.data());
+      }
+
+      return null;
+    });
+  }
+
+  // Stream user data with flexible matching for legacy schemas.
+  Stream<UserModel?> streamUserFlexible({required String uid, String? email}) {
+    return usersCollection.doc(uid).snapshots().asyncMap((doc) async {
+      if (doc.exists) {
+        return UserModel.fromMap(doc.data() as Map<String, dynamic>);
+      }
+
+      if (email != null && email.isNotEmpty) {
+        try {
+          final emailDoc = await firestore
+              .collection(usersCollectionName)
+              .doc(email)
+              .get();
+          if (emailDoc.exists) {
+            return UserModel.fromMap(emailDoc.data() as Map<String, dynamic>);
+          }
+        } on FirebaseException catch (e) {
+          if (e.code != 'permission-denied') rethrow;
+        }
+      }
+
+      try {
+        final fallback = await firestore
+            .collection(usersCollectionName)
+            .where('uid', isEqualTo: uid)
+            .limit(1)
+            .get();
+        if (fallback.docs.isNotEmpty) {
+          return UserModel.fromMap(fallback.docs.first.data());
+        }
+      } on FirebaseException catch (e) {
+        if (e.code != 'permission-denied') rethrow;
+      }
+
       return null;
     });
   }
@@ -80,8 +136,8 @@ class DatabaseService {
   // Get all users (for admin purposes)
   Future<List<UserModel>> getAllUsers() async {
     try {
-      QuerySnapshot snapshot = await _firestore
-          .collection(_usersCollection)
+      QuerySnapshot snapshot = await firestore
+          .collection(usersCollectionName)
           .get();
 
       return snapshot.docs
@@ -100,14 +156,63 @@ class DatabaseService {
     required List<String> allergies,
   }) async {
     try {
-      await _firestore.collection(_usersCollection).doc(uid).update({
+      final nowIso = DateTime.now().toIso8601String();
+      final userRef = usersCollection.doc(uid);
+      final historyRef = userRef.collection('food_preferences_history').doc();
+
+      final batch = firestore.batch();
+      batch.update(userRef, {
         'likes': likes,
         'dislikes': dislikes,
         'allergies': allergies,
-        'updatedAt': DateTime.now().toIso8601String(),
+        'updatedAt': nowIso,
       });
+      batch.set(historyRef, {
+        'likes': likes,
+        'dislikes': dislikes,
+        'allergies': allergies,
+        'createdAt': nowIso,
+      });
+
+      await batch.commit();
     } catch (e) {
       throw 'ไม่สามารถอัปเดตข้อมูลอาหาร: $e';
+    }
+  }
+
+  // Read ingredient options from Firestore collection `food` using only `ingredients` field.
+  Future<List<String>> getIngredients() async {
+    try {
+      final snapshot = await foodCollection.get();
+      final ingredients = <String>{};
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+
+        final rawIngredients = data['ingredients'];
+        if (rawIngredients is Iterable) {
+          for (final item in rawIngredients) {
+            if (item is String && item.trim().isNotEmpty) {
+              ingredients.add(item.trim());
+            }
+          }
+        } else if (rawIngredients is String &&
+            rawIngredients.trim().isNotEmpty) {
+          final splitItems = rawIngredients
+              .split(RegExp(r'[,\n]'))
+              .map((item) => item.trim())
+              .where((item) => item.isNotEmpty);
+          ingredients.addAll(splitItems);
+        }
+      }
+
+      final result = ingredients.toList()..sort();
+      if (result.isEmpty) {
+        throw 'ไม่พบข้อมูล ingredients ในคอลเลกชัน food';
+      }
+      return result;
+    } catch (e) {
+      throw 'ไม่สามารถโหลด ingredients จากคอลเลกชัน food: $e';
     }
   }
 }

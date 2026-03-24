@@ -45,6 +45,8 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>แอปต้องการเข้าถึงรูปภาพเพื่ออัปโหลดรูปโปรไฟล์ของคุณ</string>
 	<!-- Camera Permissions -->
 	<key>NSCameraUsageDescription</key>
 	<string>ต้องการเข้าถึงกล้องเพื่อถ่ายรูปอาหาร</string>

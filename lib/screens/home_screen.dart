@@ -1,21 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
+class CategoryModel {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final Color iconBg;
+
+  CategoryModel({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.iconBg,
+  });
+}
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  final Function(CategoryModel?) onRandomClick;
+  final VoidCallback onFavoriteRandomClick;
+
+  const HomeScreen({
+    Key? key,
+    required this.onRandomClick,
+    required this.onFavoriteRandomClick,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final categories = [
       {
-        'icon': Icons.access_time,
-        'title': 'เมนูกินง่าย',
-        'subtitle': 'อาหารทำง่ายไม่ยุ่งยาก',
+        'icon': LucideIcons.utensilsCrossed,
+        'title': 'อาหารจานเดียว',
+        'subtitle': 'อิ่มครบจบในจานเดียว',
         'color': const Color(0xFFFFC4C4),
         'iconBg': const Color(0xFF12B894),
       },
       {
         'icon': Icons.local_fire_department,
-        'title': 'เมนูรสเผ็ดจัด',
+        'title': 'เมนูเผ็ดจัด',
         'subtitle': 'สำหรับคนชอบรสจัดจ้าน',
         'color': const Color(0xFFFFC4C4),
         'iconBg': const Color(0xFFF35632),
@@ -28,23 +52,23 @@ class HomeScreen extends StatelessWidget {
         'iconBg': const Color(0xFF5EC931),
       },
       {
-        'icon': Icons.soup_kitchen,
-        'title': 'เมนูอิ่มท้อง',
-        'subtitle': 'กินแล้วอิ่มนาน',
+        'icon': LucideIcons.badgeCheck,
+        'title': 'เมนูฮาลาล',
+        'subtitle': 'วัตถุดิบฮาลาล',
         'color': const Color(0xFFFFC4C4),
         'iconBg': const Color(0xFFEEAB09),
       },
       {
-        'icon': Icons.fastfood,
-        'title': 'เมนูเบาๆ',
-        'subtitle': 'ของว่างของทานเล่น',
+        'icon': Icons.soup_kitchen,
+        'title': 'เมนูเส้น',
+        'subtitle': 'บะหมี่ ก๋วยเตี๋ยว',
         'color': const Color(0xFFFFC4C4),
         'iconBg': const Color(0xFF209CE5),
       },
       {
-        'icon': Icons.favorite,
-        'title': 'เมนูโปรด',
-        'subtitle': 'อาหารที่โดนใจคุณ',
+        'icon': LucideIcons.sandwich,
+        'title': 'เมนูรองท้อง',
+        'subtitle': 'ขนมปัง แซนวิช',
         'color': const Color(0xFFFFC4C4),
         'iconBg': const Color(0xFFF14274),
       },
@@ -82,8 +106,8 @@ class HomeScreen extends StatelessWidget {
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
+                        children: const [
+                          Text(
                             'วันนี้กินอะไรดี?',
                             style: TextStyle(
                               fontSize: 26,
@@ -91,8 +115,8 @@ class HomeScreen extends StatelessWidget {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
+                          SizedBox(height: 8),
+                          Text(
                             'เลือกหมวดหมู่ที่คุณสนใจ แล้วเราจะสุ่มเมนูให้',
                             style: TextStyle(
                               fontSize: 16,
@@ -119,18 +143,27 @@ class HomeScreen extends StatelessWidget {
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 1.05,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 1.05,
+                          ),
                       itemCount: categories.length,
                       itemBuilder: (context, index) {
                         final category = categories[index];
                         return InkWell(
                           onTap: () {
                             // Navigate to random screen with category
+                            final categoryModel = CategoryModel(
+                              icon: category['icon'] as IconData,
+                              title: category['title'] as String,
+                              subtitle: category['subtitle'] as String,
+                              color: category['color'] as Color,
+                              iconBg: category['iconBg'] as Color,
+                            );
+                            onRandomClick(categoryModel);
                           },
                           child: Container(
                             decoration: BoxDecoration(
@@ -195,6 +228,7 @@ class HomeScreen extends StatelessWidget {
                     InkWell(
                       onTap: () {
                         // Navigate to random screen
+                        onRandomClick(null);
                       },
                       child: Container(
                         width: double.infinity,
@@ -246,6 +280,73 @@ class HomeScreen extends StatelessWidget {
                                 SizedBox(height: 2),
                                 Text(
                                   'ไม่รู้จะกินอะไร ให้เราเลือกให้',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Favorite Random Button
+                    InkWell(
+                      onTap: onFavoriteRandomClick,
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFFEE6983), Color(0xFFFFA36C)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.favorite,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                Text(
+                                  'สุ่มเมนูโปรด !',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.3,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'สุ่มจากเมนูที่คุณกดถูกใจไว้',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 13,

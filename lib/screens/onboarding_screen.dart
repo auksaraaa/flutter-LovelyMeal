@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/database_service.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final Map<String, List<String>>? initialSelections;
@@ -12,10 +13,14 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
+  final DatabaseService _databaseService = DatabaseService();
   late int _currentStep;
   late Map<String, List<String>> _selections;
   String _searchInput = '';
   late TextEditingController _searchController;
+  List<String> _availableFoods = [];
+  bool _isLoadingIngredients = true;
+  String? _ingredientsError;
 
   @override
   void initState() {
@@ -25,6 +30,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         widget.initialSelections ??
         {'likes': [], 'dislikes': [], 'allergies': []};
     _searchController = TextEditingController();
+    _loadIngredients();
+  }
+
+  Future<void> _loadIngredients() async {
+    setState(() {
+      _isLoadingIngredients = true;
+      _ingredientsError = null;
+    });
+
+    try {
+      final ingredients = await _databaseService.getIngredients();
+      if (!mounted) return;
+      setState(() {
+        _availableFoods = ingredients;
+        _isLoadingIngredients = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _availableFoods = [];
+        _ingredientsError = e.toString().replaceFirst('Exception: ', '');
+        _isLoadingIngredients = false;
+      });
+    }
   }
 
   @override
@@ -33,41 +62,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  final List<String> _commonFoods = [
-    'ข้าว',
-    'เนื้อ',
-    'ไก่',
-    'ปลา',
-    'กุ้ง',
-    'หอย',
-    'หมู',
-    'ผัก',
-    'ผลไม้',
-    'นม',
-    'ไข่',
-    'ถั่ว',
-  ];
-
   final Map<String, Map<String, dynamic>> _stepConfig = {
     'likes': {
-      'title': 'อาหารที่ชอบ',
-      'subtitle': 'เลือกประเภทอาหารที่คุณชื่นชอบ (เลือกได้หลายอย่าง)',
+      'title': 'วัตถุดิบที่ชอบ',
+      'subtitle': 'เลือกวัตถุดิบที่คุณชื่นชอบ (เลือกได้หลายอย่าง)',
       'description': 'บอกเราว่าชอบกินอะไร',
       'icon': Icons.thumb_up,
       'color': Color(0xFF4CAF50),
       'bgColor': Color(0xFFE8F5E9),
     },
     'dislikes': {
-      'title': 'อาหารที่ไม่ชอบ',
-      'subtitle': 'เลือกวัตถุดิบหรืออาหารที่คุณไม่ชอบ (เลือกได้หลายอย่าง)',
+      'title': 'วัตถุดิบที่ไม่ชอบ',
+      'subtitle': 'เลือกวัตถุดิบที่คุณไม่ชอบ (เลือกได้หลายอย่าง)',
       'description': 'หลีกเลี่ยงสิ่งที่ไม่ชอบ',
       'icon': Icons.thumb_down,
       'color': Color(0xFFF44336),
       'bgColor': Color(0xFFFFEBEE),
     },
     'allergies': {
-      'title': 'อาหารที่แพ้',
-      'subtitle': 'เลือกวัตถุดิบหรืออาหารที่คุณแพ้ (เลือกได้หลายอย่าง)',
+      'title': 'วัตถุดิบที่แพ้',
+      'subtitle': 'เลือกวัตถุดิบที่คุณแพ้ (เลือกได้หลายอย่าง)',
       'description': 'ความปลอดภัยมาก่อน',
       'icon': Icons.warning,
       'color': Color(0xFFFFC107),
@@ -76,6 +90,32 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   };
 
   void _handleAddFood(String food, String category) {
+    if (category == 'likes' && _selections['allergies']!.contains(food)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'ไม่สามารถเลือก "$food" ในอาหารที่ชอบ เพราะอยู่ในอาหารที่แพ้',
+          ),
+          backgroundColor: const Color(0xFFB00020),
+        ),
+      );
+      return;
+    }
+
+    if (category == 'allergies' && _selections['likes']!.contains(food)) {
+      setState(() {
+        _selections['likes']!.remove(food);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'ลบ "$food" ออกจากอาหารที่ชอบแล้ว เพราะถูกเพิ่มในอาหารที่แพ้',
+          ),
+          backgroundColor: const Color(0xFF856404),
+        ),
+      );
+    }
+
     if (!_selections[category]!.contains(food)) {
       setState(() {
         _selections[category]!.add(food);
@@ -99,10 +139,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _handleBack() {
-    if (_currentStep == 4 && widget.initialStep != null) {
-      // ถ้าอยู่ในหน้าสรุปและมาจากการแก้ไข ให้กลับไปหน้าที่แก้ไข
+    if (_currentStep == 4) {
       setState(() {
-        _currentStep = widget.initialStep!;
+        _currentStep = 3;
       });
     } else if (_currentStep > 1) {
       setState(() {
@@ -131,7 +170,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final category = categories[_currentStep - 1];
     final config = _stepConfig[category]!;
     final selected = _selections[category]!;
-    final filteredFoods = _commonFoods
+    final filteredFoods = _availableFoods
         .where(
           (food) =>
               food.toLowerCase().contains(_searchInput.toLowerCase()) &&
@@ -142,293 +181,331 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8E7),
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            // ปุ่มย้อนกลับด้านบนซ้าย
-            Positioned(
-              top: 16,
-              left: 16,
-              child: GestureDetector(
-                onTap: _handleBack,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left, size: 28),
+                    onPressed: _handleBack,
+                    color: const Color(0xFF333333),
+                    tooltip: 'ย้อนกลับ',
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.arrow_back,
-                        size: 20,
-                        color: const Color(0xFF333333),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'ย้อนกลับ',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: const Color(0xFF333333),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    'ขั้นตอน $_currentStep/3',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF666666),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 48),
+                ],
               ),
             ),
-            // เนื้อหาหลัก
-            Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 380),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 30,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 25,
-                    vertical: 30,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 70,
-                        height: 70,
-                        decoration: BoxDecoration(
-                          color: config['bgColor'],
-                          shape: BoxShape.circle,
+            Expanded(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 380),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 30,
+                          offset: const Offset(0, 10),
                         ),
-                        child: Icon(
-                          config['icon'],
-                          color: config['color'],
-                          size: 48,
-                        ),
-                      ),
-                      const SizedBox(height: 15),
-                      Text(
-                        config['title'],
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF333333),
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        config['subtitle'],
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF999999),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      if (category == 'allergies')
+                      ],
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 25,
+                      vertical: 30,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                         Container(
-                          padding: const EdgeInsets.all(12),
-                          margin: const EdgeInsets.only(bottom: 20),
+                          width: 70,
+                          height: 70,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFFBEA),
-                            border: Border.all(
-                              color: const Color(0xFFFFC107),
-                              width: 2,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
+                            color: config['bgColor'],
+                            shape: BoxShape.circle,
                           ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.warning,
-                                color: const Color(0xFFFFC107),
-                                size: 20,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'ข้อมูลนี้สำคัญมาก เราจะใช้เพื่อกรองเมนูที่มีส่วนผสมที่คุณแพ้ออก',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF856404),
-                                  ),
-                                ),
-                              ),
-                            ],
+                          child: Icon(
+                            config['icon'],
+                            color: config['color'],
+                            size: 48,
                           ),
                         ),
-                      TextField(
-                        controller: _searchController,
-                        onChanged: (value) =>
-                            setState(() => _searchInput = value),
-                        decoration: InputDecoration(
-                          hintText: 'ค้นหาอาหาร${config['title']}...',
-                          hintStyle: const TextStyle(
+                        const SizedBox(height: 15),
+                        Text(
+                          config['title'],
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF333333),
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          config['subtitle'],
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 13,
                             color: Color(0xFF999999),
-                            fontSize: 14,
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFFF8F9FA),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                              color: Color(0xFFE0E0E0),
-                              width: 2,
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                              color: Color(0xFFE0E0E0),
-                              width: 2,
-                            ),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 15,
-                            vertical: 12,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      if (selected.isNotEmpty)
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: selected.map((food) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
+                        const SizedBox(height: 20),
+                        if (category == 'allergies')
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 20),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFFBEA),
+                              border: Border.all(
+                                color: const Color(0xFFFFC107),
+                                width: 2,
                               ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFF6B9D),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    food,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.warning,
+                                  color: const Color(0xFFFFC107),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'ข้อมูลนี้สำคัญมาก เราจะใช้เพื่อกรองเมนูที่มีส่วนผสมที่คุณแพ้ออก',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF856404),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  GestureDetector(
-                                    onTap: () =>
-                                        _handleRemoveFood(food, category),
-                                    child: const Icon(
-                                      Icons.close,
-                                      color: Colors.white,
-                                      size: 16,
+                                ),
+                              ],
+                            ),
+                          ),
+                        TextField(
+                          controller: _searchController,
+                          onChanged: (value) =>
+                              setState(() => _searchInput = value),
+                          decoration: InputDecoration(
+                            hintText: 'ค้นหาอาหาร${config['title']}...',
+                            hintStyle: const TextStyle(
+                              color: Color(0xFF999999),
+                              fontSize: 14,
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFFF8F9FA),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE0E0E0),
+                                width: 2,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE0E0E0),
+                                width: 2,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 15,
+                              vertical: 12,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        if (selected.isNotEmpty)
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: selected.map((food) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFF6B9D),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      food,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    GestureDetector(
+                                      onTap: () =>
+                                          _handleRemoveFood(food, category),
+                                      child: const Icon(
+                                        Icons.close,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.cloud_done,
+                              size: 16,
+                              color: Color(0xFF4CAF50),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'วัตถุดิบจาก Firebase: ${_availableFoods.length} รายการ',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF666666),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          constraints: const BoxConstraints(maxHeight: 250),
+                          child: _isLoadingIngredients
+                              ? const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(24),
+                                    child: CircularProgressIndicator(
+                                      color: Color(0xFFFF6B9D),
                                     ),
                                   ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      const SizedBox(height: 20),
-                      Container(
-                        constraints: const BoxConstraints(maxHeight: 250),
-                        child: GridView.builder(
-                          shrinkWrap: true,
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                childAspectRatio: 2.5,
-                                crossAxisSpacing: 10,
-                                mainAxisSpacing: 10,
-                              ),
-                          itemCount: filteredFoods.length,
-                          itemBuilder: (context, index) {
-                            final food = filteredFoods[index];
-                            return ElevatedButton(
-                              onPressed: () => _handleAddFood(food, category),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFF5F5F5),
-                                foregroundColor: const Color(0xFF333333),
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  side: const BorderSide(
-                                    color: Color(0xFFE0E0E0),
-                                    width: 2,
+                                )
+                              : _ingredientsError != null
+                              ? Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'โหลดวัตถุดิบจาก Firebase ไม่สำเร็จ\n$_ingredientsError',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFFB00020),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        TextButton(
+                                          onPressed: _loadIngredients,
+                                          child: const Text('ลองใหม่'),
+                                        ),
+                                      ],
+                                    ),
                                   ),
+                                )
+                              : GridView.builder(
+                                  shrinkWrap: true,
+                                  gridDelegate:
+                                      const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        childAspectRatio: 2.5,
+                                        crossAxisSpacing: 10,
+                                        mainAxisSpacing: 10,
+                                      ),
+                                  itemCount: filteredFoods.length,
+                                  itemBuilder: (context, index) {
+                                    final food = filteredFoods[index];
+                                    return ElevatedButton(
+                                      onPressed: () =>
+                                          _handleAddFood(food, category),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(
+                                          0xFFF5F5F5,
+                                        ),
+                                        foregroundColor: const Color(
+                                          0xFF333333,
+                                        ),
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          side: const BorderSide(
+                                            color: Color(0xFFE0E0E0),
+                                            width: 2,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '+ $food',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                              ),
-                              child: Text(
-                                '+ $food',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            );
-                          },
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'เลือกแล้ว ${selected.length} รายการ',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF999999),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            // ถ้ามาจากการแก้ไข (มี initialStep) ให้ไปหน้าสรุปเลย
-                            if (widget.initialStep != null) {
-                              setState(() => _currentStep = 4);
-                            } else if (_currentStep < 3) {
-                              // ถ้าเป็นครั้งแรก ให้เดินตามลำดับ
-                              _handleNext();
-                            } else {
-                              // step 3 ของครั้งแรก
-                              setState(() => _currentStep = 4);
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            backgroundColor: const Color(0xFF4CAF50),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text(
-                            widget.initialStep != null
-                                ? 'ถัดไป →'
-                                : (_currentStep < 3 ? 'ถัดไป →' : 'เสร็จสิ้น'),
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'เลือกแล้ว ${selected.length} รายการ',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF999999),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (_currentStep < 3) {
+                                _handleNext();
+                              } else {
+                                setState(() => _currentStep = 4);
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 15),
+                              backgroundColor: const Color(0xFF4CAF50),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              widget.initialStep != null
+                                  ? 'ถัดไป →'
+                                  : (_currentStep < 3
+                                        ? 'ถัดไป →'
+                                        : 'เสร็จสิ้น'),
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
