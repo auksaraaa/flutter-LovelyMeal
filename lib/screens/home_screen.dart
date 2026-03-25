@@ -17,15 +17,36 @@ class CategoryModel {
   });
 }
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final Function(CategoryModel?) onRandomClick;
   final VoidCallback onFavoriteRandomClick;
+  final bool isUserLoggedIn;
 
   const HomeScreen({
     Key? key,
     required this.onRandomClick,
     required this.onFavoriteRandomClick,
+    required this.isUserLoggedIn,
   }) : super(key: key);
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  void _handleFavoriteRandomClick() {
+    if (!widget.isUserLoggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('กรุณาเข้าสู่ระบบก่อนใช้งานสุ่มเมนูโปรด'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    widget.onFavoriteRandomClick();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +96,7 @@ class HomeScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFCF5EE),
+      backgroundColor: const Color(0xFFFFF8E7),
       body: SafeArea(
         child: Column(
           children: [
@@ -163,7 +184,7 @@ class HomeScreen extends StatelessWidget {
                               color: category['color'] as Color,
                               iconBg: category['iconBg'] as Color,
                             );
-                            onRandomClick(categoryModel);
+                            widget.onRandomClick(categoryModel);
                           },
                           child: Container(
                             decoration: BoxDecoration(
@@ -228,7 +249,7 @@ class HomeScreen extends StatelessWidget {
                     InkWell(
                       onTap: () {
                         // Navigate to random screen
-                        onRandomClick(null);
+                        widget.onRandomClick(null);
                       },
                       child: Container(
                         width: double.infinity,
@@ -296,14 +317,16 @@ class HomeScreen extends StatelessWidget {
 
                     // Favorite Random Button
                     InkWell(
-                      onTap: onFavoriteRandomClick,
+                      onTap: _handleFavoriteRandomClick,
                       child: Container(
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
+                          gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: [Color(0xFFEE6983), Color(0xFFFFA36C)],
+                            colors: widget.isUserLoggedIn
+                                ? const [Color(0xFFEE6983), Color(0xFFFFA36C)]
+                                : [Colors.grey[400]!, Colors.grey[500]!],
                           ),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
@@ -325,30 +348,30 @@ class HomeScreen extends StatelessWidget {
                                 color: Colors.white.withOpacity(0.3),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.favorite,
-                                color: Colors.white,
+                                color: widget.isUserLoggedIn ? Colors.white : Colors.grey[300],
                                 size: 24,
                               ),
                             ),
                             const SizedBox(width: 12),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
+                              children: [
                                 Text(
                                   'สุ่มเมนูโปรด !',
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: widget.isUserLoggedIn ? Colors.white : Colors.grey[300],
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                     height: 1.3,
                                   ),
                                 ),
-                                SizedBox(height: 2),
+                                const SizedBox(height: 2),
                                 Text(
                                   'สุ่มจากเมนูที่คุณกดถูกใจไว้',
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: widget.isUserLoggedIn ? Colors.white : Colors.grey[300],
                                     fontSize: 13,
                                     height: 1.3,
                                   ),

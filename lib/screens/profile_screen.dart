@@ -35,7 +35,7 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _buildLoginPrompt(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFCF5EE),
       appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: const Color(0xFFFFB3D9),
