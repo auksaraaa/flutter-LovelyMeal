@@ -53,6 +53,7 @@ class _MainScreenState extends State<MainScreen> {
     HomeScreen(
       onRandomClick: _openRandomScreen,
       onFavoriteRandomClick: _openFavoriteRandomScreen,
+      isUserLoggedIn: AuthService.currentUserId != null,
     ),
     const CalendarScreen(),
     const ChatScreen(),

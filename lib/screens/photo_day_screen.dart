@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:io';
 import '../services/photo_service.dart';
 import '../services/auth_service.dart';
@@ -68,6 +69,11 @@ class _PhotoDayScreenState extends State<PhotoDayScreen> {
           _classificationResult = result;
           _isClassifying = false;
         });
+        
+        // Show warning if image is not food
+        if (!result.isFood) {
+          _showNonFoodWarning();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -77,6 +83,97 @@ class _PhotoDayScreenState extends State<PhotoDayScreen> {
         );
       }
     }
+  }
+
+  // Show warning popup when image is not food
+  void _showNonFoodWarning() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Pink header with warning icon
+              Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFB6C1),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: const Column(
+                  children: [
+                    Icon(
+                      Icons.warning,
+                      color: Colors.white,
+                      size: 48,
+                    ),
+                  ],
+                ),
+              ),
+              // White content area
+              Padding(
+                padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0, top: 8.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Warning!',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2C3E50),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'ไม่พบอาหารในรูปภาพ\nโปรดลองถ่ายใหม่หรือเลือกภาพอื่น',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF7A8A99),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFFFFB6C1),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text(
+                          'ตกลง',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _loadPhotosForDay() async {
@@ -277,7 +374,7 @@ class _PhotoDayScreenState extends State<PhotoDayScreen> {
         leading: Padding(
           padding: const EdgeInsets.only(top: 32.0),
           child: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            icon: const Icon(LucideIcons.chevronLeft, size: 24, color: Colors.black),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -350,12 +447,17 @@ class _PhotoDayScreenState extends State<PhotoDayScreen> {
 
     final result = _classificationResult!;
     final isFood = result.isFood;
-    final backgroundColor =
-        isFood ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1);
-    final borderColor = isFood ? Colors.green : Colors.red;
-    final textColor = isFood ? Colors.green : Colors.red;
-    final icon = isFood ? Icons.check_circle : Icons.cancel;
-    final status = isFood ? 'ตรวจสอบแล้ว: อาหาร ✓' : 'ตรวจสอบแล้ว: ไม่ใช่อาหาร ✗';
+    
+    // ถ้าไม่ใช่อาหาร ไม่ต้องแสดงข้อความ (แสดง popup แทน)
+    if (!isFood) {
+      return const SizedBox.shrink();
+    }
+
+    final backgroundColor = Colors.green.withOpacity(0.1);
+    final borderColor = Colors.green;
+    final textColor = Colors.green;
+    final icon = Icons.check_circle;
+    final status = 'ตรวจสอบแล้ว: อาหาร ✓';
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -382,14 +484,7 @@ class _PhotoDayScreenState extends State<PhotoDayScreen> {
                       fontSize: 14,
                     ),
                   ),
-                  if (!isFood)
-                    Text(
-                      'ไม่พบอาหารในภาพ ลองเปลี่ยนมุม\nหรือถ่ายให้ใกล้ขึ้น',
-                      style: TextStyle(
-                        color: textColor.withOpacity(0.7),
-                        fontSize: 12,
-                      ),
-                    ),
+                  
                 ],
               ),
             ],
