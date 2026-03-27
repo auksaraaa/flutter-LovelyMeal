@@ -242,7 +242,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'อีเมลล์',
+                          'อีเมล',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,

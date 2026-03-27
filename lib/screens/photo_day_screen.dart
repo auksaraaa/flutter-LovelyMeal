@@ -385,9 +385,9 @@ class _PhotoDayScreenState extends State<PhotoDayScreen> {
             Padding(
               padding: const EdgeInsets.only(left: 56.0, bottom: 16.0),
               child: Text(
-                'Food diary',
+                'ไดอารี่อาหาร',
                 style: const TextStyle(
-                  fontSize: 32,
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),

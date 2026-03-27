@@ -15,6 +15,16 @@ class FoodItem {
     this.matchCount = 0,
   });
 
+  static dynamic _pickFirst(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value == null) continue;
+      if (value is String && value.trim().isEmpty) continue;
+      return value;
+    }
+    return null;
+  }
+
   static List<String> _toStringList(dynamic rawValue) {
     if (rawValue is List) {
       return rawValue
@@ -37,15 +47,13 @@ class FoodItem {
   /// FastAPI คืน ingredients เป็น String ("ไข่, แป้ง, น้ำมัน")
   /// และ matched_ingredients เป็น List[str]
   factory FoodItem.fromJson(Map<String, dynamic> json) {
-    // ingredients อาจเป็น String หรือ List ก็ได้
-    final rawIng = json['ingredients'];
-    final List<String> ingList = rawIng is List
-        ? List<String>.from(rawIng)
-        : (rawIng as String? ?? '')
-              .split(RegExp(r'[,、 ]+'))
-              .map((s) => s.trim())
-              .where((s) => s.isNotEmpty)
-              .toList();
+    // รองรับ backend เดิม (ingredients) และรูปแบบใหม่จาก parse_metadata (subingredients)
+    final rawIng = _pickFirst(json, [
+      'ingredients',
+      'subingredients',
+      'ingredient',
+    ]);
+    final List<String> ingList = _toStringList(rawIng);
 
     final categoryText = (json['category'] ?? '').toString().trim();
     final categoryLooksLikeInstruction =
@@ -53,6 +61,7 @@ class FoodItem {
 
     final rawInstructions =
         json['instructions'] ??
+        json['cooking'] ??
         json['method'] ??
         json['steps'] ??
         json['recipe'] ??
@@ -65,7 +74,9 @@ class FoodItem {
       name: json['name'] ?? '',
       category: categoryLooksLikeInstruction ? '' : categoryText,
       ingredients: ingList,
-      matchedIngredients: List<String>.from(json['matched_ingredients'] ?? []),
+      matchedIngredients: _toStringList(
+        _pickFirst(json, ['matched_ingredients', 'matchedIngredients']),
+      ),
       instructions: _toStringList(rawInstructions),
       matchCount: (json['match_count'] as int?) ?? 0,
     );

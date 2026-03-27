@@ -91,7 +91,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages.add(
         ChatMessage(
           text:
-              'พิมพ์วัตถุดิบที่มี เช่น ไก่ ไข่ มาม่า แล้วเราจะช่วยคิดเมนูให้ 😊',
+              'พิมพ์วัตถุดิบที่มี เช่น ไก่ ไข่ มาม่า แล้วเราจะช่วยแนะนำเมนูให้ 😊',
           isUser: false,
           timestamp: DateTime.now(),
         ),
@@ -491,7 +491,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       if (isBotMessage && !message.isError)
                         const SizedBox(height: 4),
                       Text(
-                        message.text,
+                        isBotMessage
+                            ? _formatBotMessageText(message.text)
+                            : message.text,
                         style: TextStyle(
                           fontSize: 14,
                           color: message.isUser
@@ -567,13 +569,39 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  food.name,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black,
-                  ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        food.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFDE8F2),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0xFFF2BDD4)),
+                      ),
+                      child: Text(
+                        _formatCategoryLabel(food.category),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF8E0B3D),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -604,20 +632,92 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   String _formatNumberedIngredients(List<String> ingredients) {
-    final cleaned = ingredients
+    var items = ingredients
         .map((item) => item.trim())
         .where((item) => item.isNotEmpty)
         .toList();
 
-    if (cleaned.isEmpty) {
+    if (items.isEmpty) {
       return '-';
     }
 
-    return cleaned
+    // ถ้าวัตถุดิบอยู่ในผ้อเดียวและยาวมาก ให้แตกออกมา
+    if (items.length == 1) {
+      final single = items[0];
+      var splitItems = single
+          .replaceAll(RegExp(r'^[\[\]\s]+|[\[\]\s]+$'), '')
+          .replaceAll("'", '')
+          .split(RegExp(r'\r?\n|,|;|•|/|\\| และ| กับ|\s{2,}'))
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+
+      // ถ้าแตกด้วยตัวคั่นไม่ได้ลองแตกด้วยช่องว่าง (ระมัดระวัง)
+      if (splitItems.length <= 1 && single.contains(' ')) {
+        splitItems = single
+            .split(RegExp(r'\s+'))
+            .map((item) => item.trim())
+            .where((item) => item.isNotEmpty)
+            .toList();
+        // ป้องกันการแตกเกินไป
+        splitItems = splitItems.length > 20 ? [single] : splitItems;
+      }
+
+      if (splitItems.length >= 2) {
+        items = splitItems;
+      }
+    }
+
+    return items
         .asMap()
         .entries
         .map((entry) => '${entry.key + 1}. ${entry.value}')
         .join('\n');
+  }
+
+  String _formatCategoryLabel(String rawCategory) {
+    final cleaned = rawCategory
+        .replaceAll(RegExp(r'[\[\]]'), '')
+        .replaceAll("'", '')
+        .replaceAll('"', '')
+        .split(',')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .join(', ');
+
+    return cleaned.isNotEmpty ? cleaned : 'ไม่ระบุ';
+  }
+
+  String _formatBotMessageText(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return text;
+
+    final colonIndex = trimmed.indexOf(':');
+    if (colonIndex <= 0 || colonIndex >= trimmed.length - 1) {
+      return text;
+    }
+
+    final header = trimmed.substring(0, colonIndex + 1).trim();
+    final body = trimmed.substring(colonIndex + 1).trim();
+    if (body.isEmpty) return trimmed;
+
+    final parts = body
+        .split(RegExp(r'\r?\n|,|;| แล้ว| จากนั้น| ต่อมา| ถัดไป'))
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+
+    if (parts.length < 2) {
+      return trimmed;
+    }
+
+    final numbered = parts
+        .asMap()
+        .entries
+        .map((entry) => '${entry.key + 1}. ${entry.value}')
+        .join('\n');
+
+    return '$header\n$numbered';
   }
 
   void _showFoodDetails(FoodItem food) {
@@ -647,13 +747,39 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  Text(
-                    food.name,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E1E1E),
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          food.name,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1E1E1E),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFDE8F2),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: const Color(0xFFF2BDD4)),
+                        ),
+                        child: Text(
+                          _formatCategoryLabel(food.category),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF8E0B3D),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   const Text(

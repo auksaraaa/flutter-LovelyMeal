@@ -6,7 +6,7 @@ import '../models/food_item.dart';
 import '../models/user_preferences.dart';
 
 class FoodService {
-  static const String baseUrl = "https://5d21-35-232-220-151.ngrok-free.app";
+  static const String baseUrl = "https://aeac-34-48-240-197.ngrok-free.app";
 
   static Future<Map<String, dynamic>> search({
     required String query,
