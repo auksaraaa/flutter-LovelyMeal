@@ -35,10 +35,13 @@ class _PhotoHistoryScreenState extends State<PhotoHistoryScreen> {
     _photos = _sortPhotosByTime(widget.photos);
     _photosDay = _sortPhotosByTime(widget.photosDay);
     
-    // If photos are empty, load them from the database
-    if (_photos.isEmpty && _photosDay.isEmpty) {
-      _loadPhotosForDay();
-    }
+    // โหลดรูปภาพใหม่ทันทีเมื่อเปิด history
+    // เพื่อให้แน่ใจว่าได้รูปที่อัปโหลดใหม่ล่าสุด
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        _loadPhotosForDay();
+      }
+    });
   }
 
   List<PhotoModel> _sortPhotosByTime(List<PhotoModel> photos) {
