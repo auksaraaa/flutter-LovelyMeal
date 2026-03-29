@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../services/photo_service.dart';
 import '../services/auth_service.dart';
+import '../services/database_service.dart';
 import 'photo_day_screen.dart';
 import 'photo_history_screen.dart';
 import 'login_screen.dart';
@@ -19,24 +20,74 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Map<DateTime, int> _eventCounts = {}; // เก็บจำนวนรูปต่อวัน
   final PhotoService _photoService = PhotoService();
   final AuthService _authService = AuthService();
-  bool _isLoading = false;
+  final DatabaseService _databaseService = DatabaseService();
+  late ScrollController _scrollController;
+  Map<String, bool> _monthsLoaded = {};
+  DateTime? _userCreatedAt;
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _loadPhotosForMonth(_focusedDay);
+    _scrollController = ScrollController();
+    _loadUserCreationDate();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadUserCreationDate() async {
+    final user = _authService.currentUser;
+    if (user == null) return;
+
+    try {
+      final userModel = await _databaseService.getUser(user.uid);
+      if (userModel != null && mounted) {
+        setState(() {
+          _userCreatedAt = userModel.createdAt;
+        });
+        // โหลดรูปภาพสำหรับทุกเดือนตั้งแต่สมัคร ถึงปัจจุบัน
+        await _loadAllMonthsPhotos();
+      }
+    } catch (e) {
+      if (mounted) {
+        try {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('ไม่สามารถโหลดข้อมูลผู้ใช้: $e')),
+          );
+        } catch (_) {
+          // Ignore errors when showing SnackBar (context may be invalid)
+        }
+      }
+    }
+  }
+
+  Future<void> _loadAllMonthsPhotos() async {
+    if (_userCreatedAt == null) return;
+    
+    DateTime currentMonth = DateTime(_userCreatedAt!.year, _userCreatedAt!.month, 1);
+    final now = DateTime.now();
+    
+    while (currentMonth.isBefore(DateTime(now.year, now.month + 1, 1))) {
+      await _loadPhotosForMonth(currentMonth);
+      currentMonth = DateTime(currentMonth.year, currentMonth.month + 1, 1);
+    }
   }
 
   Future<void> _loadPhotosForMonth(DateTime month) async {
     final user = _authService.currentUser;
     if (user == null) return;
 
-    setState(() => _isLoading = true);
+    final yearMonth =
+        '${month.year}-${month.month.toString().padLeft(2, '0')}';
+    
+    // ตรวจสอบว่าเดือนนี้ถูกโหลดแล้วหรือไม่
+    if (_monthsLoaded[yearMonth] == true) return;
 
     try {
-      final yearMonth =
-          '${month.year}-${month.month.toString().padLeft(2, '0')}';
       final photos = await _photoService.getPhotosByMonth(
         uid: user.uid,
         yearMonth: yearMonth,
@@ -44,7 +95,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       if (mounted) {
         setState(() {
-          _eventCounts.clear();
+          // ลบ eventCounts เก่าของเดือนนี้ก่อน
+          _eventCounts.removeWhere((key, value) =>
+              key.year == month.year && key.month == month.month);
+          
+          // เพิ่มรูปใหม่
           for (var photo in photos) {
             final dateParts = photo.date.split('-');
             final dateKey = DateTime(
@@ -54,15 +109,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
             );
             _eventCounts[dateKey] = (_eventCounts[dateKey] ?? 0) + 1;
           }
-          _isLoading = false;
+          _monthsLoaded[yearMonth] = true;
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('ไม่สามารถโหลดรูปภาพ: $e')));
+        try {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('ไม่สามารถโหลดรูปภาพ: $e')),
+          );
+        } catch (_) {
+          // Ignore errors when showing SnackBar (context may be invalid)
+        }
       }
     }
   }
@@ -96,21 +154,65 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         centerTitle: true,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
+      body: SingleChildScrollView(
+            controller: _scrollController,
+            child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
-                children: [
-                  _buildCalendarCard(context, DateTime.now()),
-                  const SizedBox(height: 20), // Space at bottom
-                ],
+                children: _buildMonthsList(),
               ),
             ),
+          ),
     );
   }
 
+  List<Widget> _buildMonthsList() {
+    List<Widget> months = [];
+    
+    if (_userCreatedAt == null) {
+      return [const Center(child: CircularProgressIndicator())];
+    }
+    
+    final now = DateTime.now();
+    DateTime currentMonth = DateTime(_userCreatedAt!.year, _userCreatedAt!.month, 1);
+    
+    // สร้างปฏิทินตั้งแต่เดือนที่สมัครสมาชิก ถึงเดือนปัจจุบัน
+    while (currentMonth.isBefore(DateTime(now.year, now.month + 1, 1))) {
+      months.add(_buildCalendarCard(context, currentMonth));
+      if (!currentMonth.isAtSameMomentAs(DateTime(now.year, now.month, 1))) {
+        months.add(const SizedBox(height: 16));
+      }
+      currentMonth = DateTime(currentMonth.year, currentMonth.month + 1, 1);
+    }
+    
+    return months;
+  }
+
   Widget _buildCalendarCard(BuildContext context, DateTime month) {
+    // คำนวณ firstDay และ lastDay สำหรับแต่ละเดือน
+    DateTime firstDayOfMonth = DateTime(month.year, month.month, 1);
+    DateTime lastDayOfMonth = DateTime(month.year, month.month + 1, 0);
+    
+    // firstDay ต้องไม่น้อยกว่าวันที่ user สมัคร (ถ้ามี)
+    DateTime effectiveFirstDay = firstDayOfMonth;
+    if (_userCreatedAt != null && firstDayOfMonth.isBefore(_userCreatedAt!)) {
+      effectiveFirstDay = _userCreatedAt!;
+    }
+    
+    // lastDay ต้องไม่เกินวันปัจจุบัน
+    DateTime effectiveLastDay = lastDayOfMonth;
+    if (lastDayOfMonth.isAfter(DateTime.now())) {
+      effectiveLastDay = DateTime.now();
+    }
+    
+    // focusedDay ต้องอยู่ระหว่าง firstDay และ lastDay
+    DateTime effectiveFocusedDay = month;
+    if (month.isBefore(effectiveFirstDay)) {
+      effectiveFocusedDay = effectiveFirstDay;
+    } else if (month.isAfter(effectiveLastDay)) {
+      effectiveFocusedDay = effectiveLastDay;
+    }
+    
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFFFB6C1).withOpacity(0.3),
@@ -140,9 +242,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TableCalendar(
-              firstDay: DateTime.utc(2020, 1, 1),
-              lastDay: DateTime.now(),
-              focusedDay: month,
+              firstDay: effectiveFirstDay,
+              lastDay: effectiveLastDay,
+              focusedDay: effectiveFocusedDay,
               currentDay: DateTime.now(),
               selectedDayPredicate: (day) {
                 return isSameDay(_selectedDay, day);
@@ -169,8 +271,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           PhotoDayScreen(selectedDate: selectedDay),
                     ),
                   ).then((_) {
-                    // Refresh photos when coming back
-                    _loadPhotosForMonth(_focusedDay);
+                    // Refresh photos for this month when coming back
+                    if (!mounted) return;
+                    final yearMonth = '${selectedDay.year}-${selectedDay.month.toString().padLeft(2, '0')}';
+                    _monthsLoaded.remove(yearMonth);
+                    _loadPhotosForMonth(selectedDay);
                   });
                 } else {
                   // Navigate to photo history screen for past days
@@ -185,8 +290,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ),
                     ),
                   ).then((_) {
-                    // Refresh photos when coming back
-                    _loadPhotosForMonth(_focusedDay);
+                    // Refresh photos for this month when coming back
+                    if (!mounted) return;
+                    final yearMonth = '${selectedDay.year}-${selectedDay.month.toString().padLeft(2, '0')}';
+                    _monthsLoaded.remove(yearMonth);
+                    _loadPhotosForMonth(selectedDay);
                   });
                 }
               },

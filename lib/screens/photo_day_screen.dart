@@ -291,28 +291,33 @@ class _PhotoDayScreenState extends State<PhotoDayScreen> {
 
       final photoFile = File(photo.path);
 
-      await _photoService.uploadPhoto(
+      // อัปโหลดรูป และรับ PhotoModel กลับมา
+      final uploadedPhoto = await _photoService.uploadPhoto(
         uid: user.uid,
         photoFile: photoFile,
         date: dateStr,
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('อัปโหลดสำเร็จ!')),
-        );
+        // optimistic update - เพิ่มรูปใหม่ลงไปในรายการเลยก่อน
         setState(() {
           _isLoading = false;
           _selectedImage = null;
+          _photosDay.add(uploadedPhoto);
+          _photosDay.sort((a, b) => a.createdAt.compareTo(b.createdAt));
         });
-        await _loadPhotosForDay();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('อัปโหลดสำเร็จ!')),
+        );
+        // รีเฟรชข้อมูลจาก Firestore เพื่อให้แน่ใจ
+        _loadPhotosForDay();
       }
     } catch (e) {
       if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('ล้มเหลว: $e')),
         );
-        setState(() => _isLoading = false);
       }
     }
   }
