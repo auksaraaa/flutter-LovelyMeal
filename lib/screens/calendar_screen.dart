@@ -21,6 +21,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   final PhotoService _photoService = PhotoService();
   final AuthService _authService = AuthService();
   final DatabaseService _databaseService = DatabaseService();
+  bool _isLoading = false;
   late ScrollController _scrollController;
   Map<String, bool> _monthsLoaded = {};
   DateTime? _userCreatedAt;
@@ -54,23 +55,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
     } catch (e) {
       if (mounted) {
-        try {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('ไม่สามารถโหลดข้อมูลผู้ใช้: $e')),
-          );
-        } catch (_) {
-          // Ignore errors when showing SnackBar (context may be invalid)
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ไม่สามารถโหลดข้อมูลผู้ใช้: $e')),
+        );
       }
     }
   }
 
   Future<void> _loadAllMonthsPhotos() async {
     if (_userCreatedAt == null) return;
-    
-    DateTime currentMonth = DateTime(_userCreatedAt!.year, _userCreatedAt!.month, 1);
+
+    DateTime currentMonth = DateTime(
+      _userCreatedAt!.year,
+      _userCreatedAt!.month,
+      1,
+    );
     final now = DateTime.now();
-    
+
     while (currentMonth.isBefore(DateTime(now.year, now.month + 1, 1))) {
       await _loadPhotosForMonth(currentMonth);
       currentMonth = DateTime(currentMonth.year, currentMonth.month + 1, 1);
@@ -81,9 +82,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final user = _authService.currentUser;
     if (user == null) return;
 
-    final yearMonth =
-        '${month.year}-${month.month.toString().padLeft(2, '0')}';
-    
+    final yearMonth = '${month.year}-${month.month.toString().padLeft(2, '0')}';
+
     // ตรวจสอบว่าเดือนนี้ถูกโหลดแล้วหรือไม่
     if (_monthsLoaded[yearMonth] == true) return;
 
@@ -96,9 +96,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (mounted) {
         setState(() {
           // ลบ eventCounts เก่าของเดือนนี้ก่อน
-          _eventCounts.removeWhere((key, value) =>
-              key.year == month.year && key.month == month.month);
-          
+          _eventCounts.removeWhere(
+            (key, value) => key.year == month.year && key.month == month.month,
+          );
+
           // เพิ่มรูปใหม่
           for (var photo in photos) {
             final dateParts = photo.date.split('-');
@@ -114,13 +115,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
     } catch (e) {
       if (mounted) {
-        try {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('ไม่สามารถโหลดรูปภาพ: $e')),
-          );
-        } catch (_) {
-          // Ignore errors when showing SnackBar (context may be invalid)
-        }
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('ไม่สามารถโหลดรูปภาพ: $e')));
       }
     }
   }
@@ -132,12 +129,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final user = _authService.currentUser;
-    
+
     // Check if user is not logged in
     if (user == null) {
       return _buildLoginRequired(context);
     }
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8E7),
       appBar: AppBar(
@@ -155,36 +152,45 @@ class _CalendarScreenState extends State<CalendarScreen> {
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-            controller: _scrollController,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: _buildMonthsList(),
-              ),
-            ),
-          ),
+        controller: _scrollController,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(children: _buildMonthsList()),
+        ),
+      ),
     );
   }
 
   List<Widget> _buildMonthsList() {
     List<Widget> months = [];
-    
+
     if (_userCreatedAt == null) {
       return [const Center(child: CircularProgressIndicator())];
     }
-    
+
     final now = DateTime.now();
-    DateTime currentMonth = DateTime(_userCreatedAt!.year, _userCreatedAt!.month, 1);
-    
+    DateTime currentMonth = DateTime(
+      _userCreatedAt!.year,
+      _userCreatedAt!.month,
+      1,
+    );
+    List<DateTime> monthDates = [];
+
     // สร้างปฏิทินตั้งแต่เดือนที่สมัครสมาชิก ถึงเดือนปัจจุบัน
     while (currentMonth.isBefore(DateTime(now.year, now.month + 1, 1))) {
-      months.add(_buildCalendarCard(context, currentMonth));
-      if (!currentMonth.isAtSameMomentAs(DateTime(now.year, now.month, 1))) {
-        months.add(const SizedBox(height: 16));
-      }
+      monthDates.add(currentMonth);
       currentMonth = DateTime(currentMonth.year, currentMonth.month + 1, 1);
     }
-    
+
+    monthDates = monthDates.reversed.toList();
+
+    for (int i = 0; i < monthDates.length; i++) {
+      months.add(_buildCalendarCard(context, monthDates[i]));
+      if (i != monthDates.length - 1) {
+        months.add(const SizedBox(height: 16));
+      }
+    }
+
     return months;
   }
 
@@ -192,19 +198,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
     // คำนวณ firstDay และ lastDay สำหรับแต่ละเดือน
     DateTime firstDayOfMonth = DateTime(month.year, month.month, 1);
     DateTime lastDayOfMonth = DateTime(month.year, month.month + 1, 0);
-    
+
     // firstDay ต้องไม่น้อยกว่าวันที่ user สมัคร (ถ้ามี)
     DateTime effectiveFirstDay = firstDayOfMonth;
     if (_userCreatedAt != null && firstDayOfMonth.isBefore(_userCreatedAt!)) {
       effectiveFirstDay = _userCreatedAt!;
     }
-    
+
     // lastDay ต้องไม่เกินวันปัจจุบัน
     DateTime effectiveLastDay = lastDayOfMonth;
     if (lastDayOfMonth.isAfter(DateTime.now())) {
       effectiveLastDay = DateTime.now();
     }
-    
+
     // focusedDay ต้องอยู่ระหว่าง firstDay และ lastDay
     DateTime effectiveFocusedDay = month;
     if (month.isBefore(effectiveFirstDay)) {
@@ -212,7 +218,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     } else if (month.isAfter(effectiveLastDay)) {
       effectiveFocusedDay = effectiveLastDay;
     }
-    
+
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFFFB6C1).withOpacity(0.3),
@@ -272,9 +278,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                   ).then((_) {
                     // Refresh photos for this month when coming back
-                    if (!mounted) return;
-                    final yearMonth = '${selectedDay.year}-${selectedDay.month.toString().padLeft(2, '0')}';
-                    _monthsLoaded.remove(yearMonth);
+                    _monthsLoaded.remove(
+                      '${selectedDay.year}-${selectedDay.month.toString().padLeft(2, '0')}',
+                    );
                     _loadPhotosForMonth(selectedDay);
                   });
                 } else {
@@ -291,9 +297,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                   ).then((_) {
                     // Refresh photos for this month when coming back
-                    if (!mounted) return;
-                    final yearMonth = '${selectedDay.year}-${selectedDay.month.toString().padLeft(2, '0')}';
-                    _monthsLoaded.remove(yearMonth);
+                    _monthsLoaded.remove(
+                      '${selectedDay.year}-${selectedDay.month.toString().padLeft(2, '0')}',
+                    );
                     _loadPhotosForMonth(selectedDay);
                   });
                 }
