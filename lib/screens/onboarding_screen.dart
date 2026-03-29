@@ -174,7 +174,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         .where(
           (food) =>
               food.toLowerCase().contains(_searchInput.toLowerCase()) &&
-              !selected.contains(food),
+              !_selections['likes']!.contains(food) &&
+              !_selections['dislikes']!.contains(food) &&
+              !_selections['allergies']!.contains(food),
         )
         .toList();
 
@@ -376,7 +378,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'วัตถุดิบจาก Firebase: ${_availableFoods.length} รายการ',
+                              'วัตถุดิบทั้งหมด : ${_availableFoods.length} รายการ',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Color(0xFF666666),

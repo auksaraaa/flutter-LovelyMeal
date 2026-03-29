@@ -520,14 +520,14 @@ class ProfileScreen extends StatelessWidget {
                         child: ElevatedButton(
                           onPressed: () async {
                             try {
-                              // Navigate ก่อนแล้วค่อย signOut เพื่อไม่ให้ StreamBuilder rebuild
+                              await authService.signOut();
+                              if (!context.mounted) return;
                               Navigator.of(context).pushAndRemoveUntil(
                                 MaterialPageRoute(
                                   builder: (context) => const MainScreen(),
                                 ),
                                 (route) => false,
                               );
-                              await authService.signOut();
                             } catch (e) {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(

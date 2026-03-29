@@ -21,7 +21,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   final PhotoService _photoService = PhotoService();
   final AuthService _authService = AuthService();
   final DatabaseService _databaseService = DatabaseService();
-  bool _isLoading = false;
   late ScrollController _scrollController;
   Map<String, bool> _monthsLoaded = {};
   DateTime? _userCreatedAt;

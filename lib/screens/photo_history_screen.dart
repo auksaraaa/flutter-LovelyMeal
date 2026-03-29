@@ -24,7 +24,6 @@ class PhotoHistoryScreen extends StatefulWidget {
 
 class _PhotoHistoryScreenState extends State<PhotoHistoryScreen> {
   late List<PhotoModel> _photos;
-  late List<PhotoModel> _photosDay;
   bool _isLoading = false;
   final PhotoService _photoService = PhotoService();
   final AuthService _authService = AuthService();
@@ -32,9 +31,8 @@ class _PhotoHistoryScreenState extends State<PhotoHistoryScreen> {
   @override
   void initState() {
     super.initState();
-    _photos = _sortPhotosByTime(widget.photos);
-    _photosDay = _sortPhotosByTime(widget.photosDay);
-    
+    _photos = _sortPhotosByTime(widget.photosDay);
+
     // โหลดรูปภาพใหม่ทันทีเมื่อเปิด history
     // เพื่อให้แน่ใจว่าได้รูปที่อัปโหลดใหม่ล่าสุด
     Future.delayed(const Duration(milliseconds: 500), () {
@@ -46,7 +44,9 @@ class _PhotoHistoryScreenState extends State<PhotoHistoryScreen> {
 
   List<PhotoModel> _sortPhotosByTime(List<PhotoModel> photos) {
     final sorted = List<PhotoModel>.from(photos);
-    sorted.sort((a, b) => a.createdAt.compareTo(b.createdAt)); // เรียงจากเก่าสุด
+    sorted.sort(
+      (a, b) => a.createdAt.compareTo(b.createdAt),
+    ); // เรียงจากเก่าสุด
     return sorted;
   }
 
@@ -67,7 +67,6 @@ class _PhotoHistoryScreenState extends State<PhotoHistoryScreen> {
 
       if (mounted) {
         setState(() {
-          _photosDay = _sortPhotosByTime(photos);
           _photos = _sortPhotosByTime(photos);
           _isLoading = false;
         });
@@ -75,9 +74,9 @@ class _PhotoHistoryScreenState extends State<PhotoHistoryScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('เกิดข้อผิดพลาด: $e')));
       }
     }
   }
@@ -93,7 +92,11 @@ class _PhotoHistoryScreenState extends State<PhotoHistoryScreen> {
         leading: Padding(
           padding: const EdgeInsets.only(top: 32.0),
           child: IconButton(
-            icon: const Icon(LucideIcons.chevronLeft, size: 24, color: Colors.black),
+            icon: const Icon(
+              LucideIcons.chevronLeft,
+              size: 24,
+              color: Colors.black,
+            ),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -121,125 +124,128 @@ class _PhotoHistoryScreenState extends State<PhotoHistoryScreen> {
               slivers: [
                 SliverToBoxAdapter(
                   child: _photos.isEmpty
-          ? SizedBox(
-              height: MediaQuery.of(context).size.height - 300,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.image_not_supported_outlined,
-                      size: 100,
-                      color: Colors.grey.withOpacity(0.5),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'ยังไม่มีรูปภาพ',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : GridView.builder(
-              padding: const EdgeInsets.all(16.0),
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              itemCount: _photos.length,
-              itemBuilder: (context, index) {
-                final photo = _photos[index];
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PhotoViewerScreen(
-                          photos: _photos,
-                          initialIndex: index,
-                        ),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.white,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            photo.storageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.error),
-                              );
-                            },
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.transparent,
-                                  Colors.black.withOpacity(0.7),
-                                ],
-                              ),
-                            ),
-                            padding: const EdgeInsets.all(8),
+                      ? SizedBox(
+                          height: MediaQuery.of(context).size.height - 300,
+                          child: Center(
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text(
-                                  photo.date,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                Icon(
+                                  Icons.image_not_supported_outlined,
+                                  size: 100,
+                                  color: Colors.grey.withOpacity(0.5),
                                 ),
-                                Text(
-                                  '${photo.createdAt.hour.toString().padLeft(2, '0')}:${photo.createdAt.minute.toString().padLeft(2, '0')}',
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 11,
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'ยังไม่มีรูปภาพ',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.grey,
                                   ),
                                 ),
                               ],
                             ),
                           ),
+                        )
+                      : GridView.builder(
+                          padding: const EdgeInsets.all(16.0),
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                              ),
+                          itemCount: _photos.length,
+                          itemBuilder: (context, index) {
+                            final photo = _photos[index];
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => PhotoViewerScreen(
+                                      photos: _photos,
+                                      initialIndex: index,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  color: Colors.white,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.network(
+                                        photo.storageUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return Container(
+                                                color: Colors.grey[300],
+                                                child: const Icon(Icons.error),
+                                              );
+                                            },
+                                      ),
+                                    ),
+                                    Positioned(
+                                      bottom: 0,
+                                      left: 0,
+                                      right: 0,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              Colors.transparent,
+                                              Colors.black.withOpacity(0.7),
+                                            ],
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.all(8),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              photo.date,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Text(
+                                              '${photo.createdAt.hour.toString().padLeft(2, '0')}:${photo.createdAt.minute.toString().padLeft(2, '0')}',
+                                              style: const TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
                 ),
               ],
             ),
@@ -284,7 +290,11 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
         backgroundColor: Colors.black,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(LucideIcons.chevronLeft, size: 24, color: Colors.white),
+          icon: const Icon(
+            LucideIcons.chevronLeft,
+            size: 24,
+            color: Colors.white,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),

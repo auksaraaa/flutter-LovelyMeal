@@ -1090,7 +1090,7 @@ class _RandomDetailScreenState extends State<RandomDetailScreen> {
                               onPressed: handleSelectMeal,
                               icon: Icon(
                                 isLiked
-                                    ? Icons.favorite
+                                    ? Icons.heart_broken
                                     : Icons.favorite_border,
                                 size: 22,
                                 color: Colors.white,
